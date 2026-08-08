@@ -5,11 +5,12 @@
 - Access: no ownership or authentication; anyone can discover sessions from the public landing page and vote, close or reopen them
 - Mutations: form POST, no /api routes; successful mutations redirect with 303 to the canonical session URL
 - Detail page actions: hidden `action` field (upvote|downvote|close|reopen) plus `place` (1-4) for the vote actions
-- Vote column selection: map `place` through a fixed ['place1_votes', ...] array and return 400 on anything not 1-4; never interpolate the column name
+- Vote column selection: require the raw `place` value to be exactly one of the strings '1'-'4' (no coercion: '02', ' 2', '2.0' are 400), map it through a fixed ['place1_votes', ...] array; never interpolate the column name
 - Vote updates: use one conditional UPDATE requiring `is_open = 1` and a non-null place name; never read is_open and update in separate statements
 - Mutation status codes: run the conditional UPDATE first; only when it changes 0 rows, SELECT the session to classify the failure - no row is 404, NULL selected place name is 400, otherwise 409. This read is race-free because place names are immutable after creation; only is_open needs the in-UPDATE guard
 - Close/reopen status codes: when the UPDATE changes 0 rows, SELECT to distinguish unknown session (404) from already-in-that-state (idempotent 303)
 - Vote spam: unguarded by design; downvotes clamp at 0
+- Error bodies: 400 and 409 responses render a minimal Indonesian message with a link back to the session(landing page when no session exists); they need not share the 404/500 templates
 - Create input: trim all fields, discard empty place names, require 2-4 remaining names, and store them sequentially in place1 through place4; duplicate names are allowed
 - Session ids: generate with a cryptographically secure random source; normalize lowercase, i/l to 1, and o to 0 before validating the canonical alphabet
 - UI language: Indonesian with `<html lang="id">`
@@ -84,7 +85,7 @@
 - [ ] Add e2e harness in `test/*.test.mjs` (plain JS so `node --test` needs no type stripping): node:test spawns `node dist/server/entry.mjs` on a random high port, retrying on EADDRINUSE, with HOST, PORT, and MAKAN_DB pointing at a unique temporary database
       - Resolve and reject the test database path if it equals the default repository database
       - Poll an HTTP endpoint until ready with a bounded timeout
-      - Capture child stdout/stderr for startup failures
+      - Capture child stdout/stderr; treat child exit before readiness as a failed attempt, retry with a new port only when stderr contains EADDRINUSE, and surface the captured output for any other startup failures
       - Use `redirect: 'manual'` when asserting response statuses and Location headers
       - Send an `origin` header matching the server origin on every POST; Astro's checkOrigin returns 403 otherwise
       - Always stop the child process and remove the temporary directory in teardown
@@ -108,8 +109,8 @@
       Done when: downvoting a place at 0 leaves it at 0; an empty slot returns 400; a closed session returns 409 without changing counts
 - [ ] Cover close-versus-vote behavior without a read-then-update race
       Done when: the vote query itself includes `is_open = 1`, so a vote cannot succeed after a close update commits
-- [ ] Guard `Astro.request.formData()` so a non-form or unparseable POST body returns 400 instead of an unhandled 500
-      Done when: a POST with `content-type: application/json` and a garbage body returns 400 and changes no counts
+- [ ] Guard `Astro.request.formData()` on every POST endpoint (/new and /s/[id]) so a non-form or unparseable POST body returns 400 instead of an unhandled 500
+      Done when: a POST with `content-type: application/json` and a garbage body returns 400 on both /new and /s/[id], and changes no counts
 
 ### 4. Closing and winner
 
