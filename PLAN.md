@@ -6,6 +6,7 @@
 - Mutations: form POST + redirect, no /api routes
 - Vote spam: unguarded by design; downvotes clamp at 0
 - Session listing: public by design
+- Testing: HTTP-level e2e with node:test + fetch, no browser driver; the 320px layout is checked by eye
 
 ## Steps
 
@@ -13,8 +14,8 @@
 
 - [ ] Configure SSR: add @astrojs/node adapter, output: 'server'
       Done when: a page renders a fresh timestamp on every reload
-- [ ] Add db connection module: create data/, open data/makan.db, assert journal_mode = delete, globalThis singleton
-      Done when: booting creates data/makan.db with no -wal sidecar
+- [ ] Add db connection module: create the directory, open MAKAN_DB (default data/makan.db), assert journal_mode = delete, globalThis singleton
+      Done when: booting creates data/makan.db with no -wal sidecar, and MAKAN_DB points it elsewhere
 - [ ] Create vote_sessions at startup with CREATE TABLE IF NOT EXISTS
       (id TEXT PK, title, is_open DEFAULT 1, created_at,
       place1_name/place2_name NOT NULL, place3_name/place4_name nullable,
@@ -29,7 +30,9 @@
 
 - [ ] Add /new page and minimal /s/[id]: form posts title + 4 place inputs, inserts, redirects; detail page shows the title
       Done when: submitting the form lands on a detail page showing the title
-- [ ] Render place names and vote counts on /s/[id], skipping empty slots
+- [ ] Add e2e harness: node:test spawns the built standalone server on a spare port with MAKAN_DB pointed at a temp file, helper posts a form and returns the redirect target
+      Done when: a test creates a session over HTTP and asserts its title on /s/[id]
+- [ ] Render place names and vote counts on /s/[id], skipping empty slots, with data-place and data-votes attributes as test hooks
       Done when: a 2-place session shows exactly 2 places at 0 votes
 - [ ] Validate the create form: title required, min 2 places, re-render errors with input preserved
       Done when: submitting 1 place returns the form with an error and writes no row
