@@ -4,6 +4,7 @@
 
 - Close/reopen: no ownership, anyone with the link can toggle is_open
 - Mutations: form POST + redirect, no /api routes
+- Detail page actions: hidden `action` field (upvotee|downvote|close|reopen) plus `place` (1-4) for the vote actions
 - Vote spam: unguarded by design; downvotes clamp at 0
 - Session listing: public by design
 - Testing: HTTP-level e2e with node:test + fetch, no browser driver; the 320px layout is checked by eye
@@ -12,11 +13,11 @@
 
 ### 1. Foundation
 
-- [ ] Configure SSR: add @astrojs/node adapter, output: 'server'
+- [ ] Configure SSR: npm install --save-exact @astrojs/node, output: 'server'
       Done when: a page renders a fresh timestamp on every reload
 - [ ] Add db connection module: create the directory, open MAKAN_DB (default data/makan.db), assert journal_mode = delete, globalThis singleton
       Done when: booting creates data/makan.db with no -wal sidecar, and MAKAN_DB points it elsewhere
-- [ ] Create vote_sessions at startup with CREATE TABLE IF NOT EXISTS
+- [ ] Create vote_sessions on first import of the db module with CREATE TABLE IF NOT EXISTS
       (id TEXT PK, title, is_open DEFAULT 1, created_at,
       place1_name/place2_name NOT NULL, place3_name/place4_name nullable,
       place1..4_votes DEFAULT 0)
@@ -30,11 +31,13 @@
 
 - [ ] Add /new page and minimal /s/[id]: form posts title + 4 place inputs, inserts, redirects; detail page shows the title
       Done when: submitting the form lands on a detail page showing the title
-- [ ] Add e2e harness: node:test spawns the built standalone server on a spare port with MAKAN_DB pointed at a temp file, helper posts a form and returns the redirect target
-      Done when: a test creates a session over HTTP and asserts its title on /s/[id]
+- [ ] Add e2e harness: node:test spawns the built standalone server on a spare port with MAKAN_DB pointed at a temp file, helper posts a form and returns the redirect target; add "test": "astro build && node --test"
+      Done when: npm test creates a session over HTTP and asserts its title on /s/[id]
+- [ ] Return 404 for unknown session id
+      Done when:: /s/zzzzzzz returns 404, not a 500
 - [ ] Render place names and vote counts on /s/[id], skipping empty slots, with data-place and data-votes attributes as test hooks
       Done when: a 2-place session shows exactly 2 places at 0 votes
-- [ ] Validate the create form: title required, min 2 places, re-render errors with input preserved
+- [ ] Validate the create form: trim inputs, title required and max 100 chars, place names max 60 chars, min 2 places, re-render errors with input preserved
       Done when: submitting 1 place returns the form with an error and writes no row
 - [ ] Implement landing page: sessions list ordered by created_at desc, open/closed state visible
       Done when: two sessions appear newest first
@@ -59,11 +62,9 @@
 
 ### 5. Routing edges and polish
 
-- [ ] Return 404 for unknown session id
-      Done when: /s/zzzzzzz returns 404, not a 500
 - [ ] Redirect non-canonical id to canonical lowercase with 301
       Done when: /s/ABC12QX 301s to /s/abc12qx
-- [ ] Implement QR Code in the detail page to make sure user able to share vote session easier. Use third-party deps
+- [ ] Implement QR Code in the detail page to make sure user able to share vote session easier. Use third-party deps, npm install --save-exact
       Done when: scanning the QR on a phone opens the session
 - [ ] Implement entertaining 404 and 500 pages
       Done when: an unknown URL renders the custom page in a production build
