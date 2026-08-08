@@ -27,7 +27,7 @@ vote_sessions:
 ## Database
 
 * Driver: `node:sqlite` (`DatabaseSync`); no third-party SQLite package
-* File: `MAKAN_DB` env var, `data/makan.db`, committed to the repo; create the directory beefore opening
+* File: `MAKAN_DB` env var, `data/makan.db`, committed to the repo; create the directory before opening
 * Journal mode: keep SQLite's default `DELETE`. Never enable WAL, so the committed file is always complete
 * Assert it immediately after opening with `PRAGMA journal_mode = DELETE` and throw when the result is not `delete`. The pragma silently no-ops if another connection is open
 * Hold one connection as a `globalThis` singleton so dev HMR cannot open concurrent connections
