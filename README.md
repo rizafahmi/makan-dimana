@@ -1,43 +1,43 @@
-# Astro Starter Kit: Minimal
+# Makan Dimana
 
-```sh
-npm create astro@latest -- --template minimal
-```
+Gather food place ideas and vote on them as a group. One person creates a vote session with two to four places and shares the link; everyone else votes. Closing the session reveals the winner.
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+## Requirements
 
-## 🚀 Project Structure
+Node >= 22.12.0. No database server: the app uses `node:sqlite` against a file committed to the repo at `data/makan.db`, overridable with the `MAKAN_DB` environment variable.
 
-Inside of your Astro project, you'll see the following folders and files:
+## Project structure
 
 ```text
 /
+├── data/
+│   └── makan.db
 ├── public/
 ├── src/
+│   ├── lib/
+│   │   └── db.ts
 │   └── pages/
-│       └── index.astro
-└── package.json
+│       ├── index.astro
+│       └── s/[id].astro
+├── test/
+├── AGENTS.md
+└── PLAN.md
 ```
 
-Astro looks for `.astro` or `.md` files in the `src/pages/` directory. Each page is exposed as a route based on its file name.
+Every page is rendered on demand by the server through `@astrojs/node`; there is no client-side data fetching and no UI framework.
 
-There's nothing special about `src/components/`, but that's where we like to put any Astro/React/Vue/Svelte/Preact components.
+## Commands
 
-Any static assets, like images, can be placed in the `public/` directory.
+| Command | Action |
+| :------ | :----- |
+| `npm install` | Install dependencies |
+| `npm run dev` | Start the dev server at `localhost:4321` |
+| `npm run build` | Build to `./dist/` |
+| `npm run preview` | Preview the production build |
+| `npm test` | Build, then run the `node:test` suites in `test/` |
 
-## 🧞 Commands
+Tests spawn the built server on a random port against a temporary database, so they never touch `data/makan.db`.
 
-All commands are run from the root of the project, from a terminal:
+## Contributing
 
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `npm install`             | Installs dependencies                            |
-| `npm run dev`             | Starts local dev server at `localhost:4321`      |
-| `npm run build`           | Build your production site to `./dist/`          |
-| `npm run preview`         | Preview your build locally, before deploying     |
-| `npm run astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `npm run astro -- --help` | Get help using the Astro CLI                     |
-
-## 👀 Want to learn more?
-
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+`PLAN.md` holds the build order and the decisions behind it. `AGENTS.md` holds the rules coding agents must follow in this repo and is the authority when the two disagree.
