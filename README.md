@@ -4,7 +4,7 @@ Gather food place ideas and vote on them as a group. One person creates a vote s
 
 ## Requirements
 
-Node >= 22.12.0. No database server: the app uses `node:sqlite` against a file committed to the repo at `data/makan.db`, overridable with the `MAKAN_DB` environment variable.
+Node >= 22.18.0, where `node --test` strips TypeScript without a flag. No database server: the app uses `node:sqlite` against a file committed to the repo at `data/makan.db`, overridable with the `MAKAN_DB` environment variable.
 
 ## Project structure
 

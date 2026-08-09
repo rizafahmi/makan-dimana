@@ -14,16 +14,33 @@ Read this section before taking any action.
 * Pin exact versions. Install with `npm install --save-exact`.
 * Vanilla CSS only. No Tailwind, no CSS framework, no CSS-in-JS, no UI framework components.
 * No comments, annotations, or JSDoc in source files.
+* Write end-user documentation to @docs/user_documentation.md. Write a high-level internal documentation about the implementation into @docs/internal_documentation.md. Never write any local memories. You must include the memories in one of these documentation markdown files instead. If needed, create additional files in the docs/#{topic}.md directory and add them to git.
+* Test-driven development, always. See below.
+
+## Test-driven development
+
+No production code without a failing test first. Features, bug fixes, and behavior changes all qualify; `astro.config.mjs` and other configuration are the only exceptions.
+
+Because I type every change myself, the loop is:
+
+1. You propose exactly one failing test, and stop.
+2. I type it, run it, and paste the failure.
+3. Only once I have shown you a correct failure do you propose the implementation.
+4. I type it, run it, and paste the result.
+5. You propose refactors only while the suite is green.
+
+Never put a test and its implementation in the same message. If a test passes the first time I run it, it is describing behavior that already exists - rewrite the test rather than moving on. If I show you a failure caused by a typo or a missing import rather than the missing feature, fix that and get a real red first.
 
 ## Stack
 
-Astro 7.2.0 with `@astrojs/node` (`output: 'server'`), TypeScript on Node >= 22.12, `node:sqlite`, vanilla CSS.
+Astro 7.2.0 with `@astrojs/node` (`output: 'server'`), TypeScript on Node >= 22.18, `node:sqlite`, vanilla CSS.
 
 ## Commands
 
 * `astro dev --background` starts the dev server. Manage it with `astro dev stop`, `astro dev status`, and `astro dev logs`.
 * `npm run build` produces the production build in `dist/`.
-* `npm test` runs `astro build && node --test`. Suites live in `test/*.test.mjs` as plain JS so `node --test` needs no type stripping. Tests must never create or modify `data/makan.db`.
+* `node --test test/db.test.ts` runs one suite with no build. Type stripping is on by default, so tests may import `src/lib/*.ts` directly. This is the red-green loop.
+* `npm test` runs `astro build && node --test`. Suites live in `test/*.test.mjs` as plain JS so `node --test` needs no type stripping. Run it before calling any step done. Tests must never create or modify `data/makan.db`.
 
 ## Database
 

@@ -15,7 +15,8 @@
 - Session ids: generate with a cryptographically secure random source; normalize lowercase, i/l to 1, and o to 0 before validating the canonical alphabet
 - UI language: Indonesian with `<html lang="id">`
 - Close/reopen: no confirmation; repeated close or reopen actions are idempotent
-- Testing: HTTP-level e2e with node:test + fetch, no browser driver; the 320px layout is checked by eye
+- Development: strict TDD; every `Done when:` below is written as a failing node:test and watched fail before the code that satisfies it
+- Testing: node:test unit suites for `src/lib`, HTTP-level e2e with node:test + fetch for routes, no browser driver; the manual 320px, QR, and committed-database checks in step 6 are the only non-test criteria
 - CSRF: keep Astro's default `security.checkOrigin: true`; undici's fetch sends no Origin header and Astro returns 403 for form-content-type POSTs without a matching one, so every e2e POST must send an `origin` header equal to the server origin
 
 ## Non-goals and accepted risks
@@ -59,11 +60,20 @@
 
 ### 1. Foundation
 
+- [ ] Add e2e harness in `test/*.test.test` needs no type stripping):node:test spawns `node dist/server/entry.mjs` on a random high port, retrying on EADDRINUSE, with HOST,PORT, and MAKAN_DB pointing at a unique
+      - Resolve and reject the test database path if it equals the default repository database
+      - Poll an HTTP endpoint until re
+      - Capture child stdout/stderr; treat child exit before readiness as a failed attempt, retry withnew port only when stderr contains EADDptured output for any other startupfailures
+      - Use `redirect: 'manual'` when s and Location headers
+      - Send an `origin` header matching the server origin on every POST; Astro's checkOrigin returns 403 otherwise
+      - Always stop the child process and remove the temporary directory in teardown
+      - Retain the existing `"test": ""` script
+      Done when: the harness first fails because no `dist/server/entry.mjs` exists, then passes on a 200 from `/` once the adapter is configuredfying data/makan.db
 - [ ] Install `@astrojs/node` with `npm install --save-exact`; configure `adapter: node({ mode: 'standalone', bodySizeLimit: 16384 })`, `output: 'server'`, and `trailingSlash: 'never'` so /s/[id] has one canonical URL
-      Done when: `node dist/server/entry.mjs` serves the production build and a temporary timestamp changes between requests
+      Done when: the harness smoke test turns green
       Remove the temporary timestamp before completing this step
 - [ ] Add db connection module: create the directory, open MAKAN_DB (default data/makan.db), assert journal_mode = delete, globalThis singleton
-      Done when: booting creates data/makan.db with no -wal sidecar, and MAKAN_DB points it elsewhere
+      Done when: a node:test written first, pointing MAKAN_DB at a temporary path, passes - the file is created, `PRAGMA journal_mode` returns delete, no -wal sidecar appears, and importing twice yields the same connection
 - [ ] Create vote_sessions on first import of the db module with CREATE TABLE IF NOT EXISTS
       Use:
       - id TEXT PRIMARY KEY
@@ -73,24 +83,15 @@
       - place3_name/place4_name TEXT nullable
       - place1_votes through place4_votes INTEGER NOT NULL DEFAULT 0 with non-negative CHECK constraints
       - created_at TEXT NOT NULL DEFAULT (datetime('now'))
-      Done when: the table exists and a second boot is a no-op
+      Done when: a node:test written first asserts the columns, defaults, and CHECK constraints, and that a second import is a no-op
 - [ ] Add createSession + getSession; createSession accepts an optional id generator (`createSession(input, generateId = defaultGenerateId)`) as the test seam; retry id generation at most 5 times only when INSERT fails with a primary-key violation (`errcode === 1555`, SQLITE_CONSTRAINT_PRIMARYKEY - never match on the message string), and propagate every other SQLite error
       getSession normalizes and validates the id before lookup
-      Done when: node:test round-trips a session, covers a forced collision, propagates a non-collision database error, finds a session by a lookalike-typo id, and rejects malformed ids
+      Done when: node:test round-trips a session, covers a forced collision, propagates a non-collision database error, finds a session by a lookalike-typo id, and rejects malformed ids - each case watched fail before the code that satisfies it
 
 ### 2. Create and view
 
 - [ ] Add /new and minimal /s/[id]: the form posts title + 4 place input to /new; successful insertion redirects with 303; the detail page shows the title
-      Done when: submitting the form lands on  the canonical detail page showing the title, and refreshing does not submit again
-- [ ] Add e2e harness in `test/*.test.mjs` (plain JS so `node --test` needs no type stripping): node:test spawns `node dist/server/entry.mjs` on a random high port, retrying on EADDRINUSE, with HOST, PORT, and MAKAN_DB pointing at a unique temporary database
-      - Resolve and reject the test database path if it equals the default repository database
-      - Poll an HTTP endpoint until ready with a bounded timeout
-      - Capture child stdout/stderr; treat child exit before readiness as a failed attempt, retry with a new port only when stderr contains EADDRINUSE, and surface the captured output for any other startup failures
-      - Use `redirect: 'manual'` when asserting response statuses and Location headers
-      - Send an `origin` header matching the server origin on every POST; Astro's checkOrigin returns 403 otherwise
-      - Always stop the child process and remove the temporary directory in teardown
-      - Retain the existing `"test": "astro build && node --test"` script
-      - Done when: npm test creates a session over HTTP, observes the 303 redirect, and asserts its title on /s/[id] without creating or modifying data/makan.db
+      Done when: an e2e test written first - POST /new with a title and 2 places, asserting a 303 to the canonical /s/[id] and the title on that page - goes red then green, and refreshing the detail page does not resubmit
 - [ ] Return 404 for unknown or malformed session id
       Done when: /s/zzzzzz, /s/short, /s/abc12u3, and /s/abc12!3 return 404 rather than 500
 - [ ] Render place names and vote counts on /s/[id], skipping empty slots, with data-place and data-votes attributes as test hooks
