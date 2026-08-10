@@ -112,7 +112,7 @@ Pin these before writing the first test; the e2e suites hard-code them.
       Done when: `pnpm test` reports zero type errors and still runs every suite, and a deliberately introduced type error makes it exit non-zero before the build runs
 - [x] Add db connection module: create the directory, open MAKAN_DB (default data/makan.db), assert journal_mode = delete, globalThis singleton
       Done when: a node:test written first, pointing MAKAN_DB at a temporary path, passes - the file is created, `PRAGMA journal_mode` returns delete, no -wal sidecar appears, and importing twice yields the same connection
-- [ ] Create vote_sessions on first import of the db module with CREATE TABLE IF NOT EXISTS
+- [x] Create vote_sessions on first import of the db module with CREATE TABLE IF NOT EXISTS
       Use:
       - id TEXT PRIMARY KEY
       - title TEXT NOT NULL CHECK (length(title) > 0)
