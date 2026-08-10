@@ -129,3 +129,105 @@ test("the CHECK constraints reject empty names and out-of-range numbers", async 
     0,
   );
 });
+
+test("createSession round-trips a 2-place session with null unused slots", async () => {
+  const { createSession, getSession } = await import("../src/lib/db.ts");
+
+  const id = createSession({
+    title: "Makan siang tim",
+    places: ["Warteg", "Padang"],
+  });
+
+  assert.match(id, /^[0-9abcdefghjkmnpqrstvwxyz]{7}$/);
+
+  const session = getSession(id);
+  assert.equal(session?.title, "Makan siang tim");
+  assert.equal(session?.is_open, 1);
+  assert.equal(session?.place1_name, "Warteg");
+  assert.equal(session?.place2_name, "Padang");
+  assert.equal(session?.place3_name, null);
+  assert.equal(session?.place4_name, null);
+});
+
+test("createSession retries id generation n a primary-key collision", async () => {
+  const { createSession, getSession } = await import("../src/lib/db.ts");
+
+  const taken = createSession({
+    title: "Sesi pertama",
+    places: ["Warteg", "Padang"],
+  });
+  const ids = [taken, taken, "fresh77"];
+  const id = createSession(
+    { title: "Sesi kedua", places: ["Bakso", "Sate"] },
+    () => ids.shift() ?? "fresh77",
+  );
+
+  assert.equal(id, "fresh77");
+  assert.equal(getSession(id)?.title, "Sesi kedua");
+});
+
+test("createSession propagates a non-collision database error without retrying", async () => {
+  const { createSession } = await import("../src/lib/db.ts");
+
+  let calls = 0;
+  const generate = () => {
+    calls++;
+    return `propag${calls}`;
+  };
+
+  assert.throws(
+    () => createSession({ title: "", places: ["Warteg", "Padang"] }, generate),
+    /CHECK constraint failed/,
+  );
+
+  assert.equal(calls, 1);
+});
+
+test("createSession gives up after 5 retries on persistent collisions", async () => {
+  const { createSession } = await import("../src/lib/db.ts");
+
+  const taken = createSession({
+    title: "Sesi penuh",
+    places: ["Warteg", "Padang"],
+  });
+
+  let calls = 0;
+  const generate = () => {
+    calls++;
+    return taken;
+  };
+
+  assert.throws(
+    () =>
+      createSession(
+        { title: "Sesi gagal", places: ["Bakso", "Sate"] },
+        generate,
+      ),
+    /UNIQUE constraint failed/,
+  );
+
+  assert.equal(calls, 6);
+});
+
+test("getSession finds a session through a lookalike-typo id", async () => {
+  const { createSession, getSession } = await import("../src/lib/db.ts");
+
+  createSession(
+    { title: "Sesi mirip", places: ["Warteg", "Padang"] },
+    () => "abc120x",
+  );
+
+  assert.equal(getSession("ABCl2Ox")?.title, "Sesi mirip");
+  assert.equal(getSession("abci2ox")?.title, "Sesi mirip");
+});
+
+test("normalizeSessionId canonicalizes valid ids and rejects malformed ones", async () => {
+  const { normalizeSessionId } = await import("../src/lib/db.ts");
+
+  assert.equal(normalizeSessionId("ABCl2Ox"), "abc120x");
+  assert.equal(normalizeSessionId("abc12qx"), "abc12qx");
+  assert.equal(normalizeSessionId("abc12u3"), null);
+  assert.equal(normalizeSessionId("short"), null);
+  assert.equal(normalizeSessionId("toolong1"), null);
+  assert.equal(normalizeSessionId("abc12!3"), null);
+});

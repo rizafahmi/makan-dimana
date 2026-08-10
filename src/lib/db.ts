@@ -1,6 +1,7 @@
 import { mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
+import { randomBytes } from "node:crypto";
 
 const file = resolve(process.env.MAKAN_DB ?? "data/makan.db");
 
@@ -40,3 +41,56 @@ const open = () => {
 const store = globalThis as typeof globalThis & { makanDb?: DatabaseSync };
 
 export const db = (store.makanDb ??= open());
+
+const alphabet = "0123456789abcdefghjkmnpqrstvwxyz";
+
+const defaultGenerateId = () => {
+  let id = "";
+  for (const byte of randomBytes(7)) id += alphabet[byte % 32];
+  return id;
+};
+
+type SessionInput = { title: string; places: string[] };
+
+export const createSession = (
+  input: SessionInput,
+  generateId = defaultGenerateId,
+) => {
+  const insert = db.prepare(
+    "INSERT INTO vote_sessions (id, title, place1_name, place2_name, place3_name, place4_name) VALUES (?, ?, ?, ?, ?, ?)",
+  );
+  for (let attempt = 0; ; attempt++) {
+    const id = generateId();
+    try {
+      insert.run(
+        id,
+        input.title,
+        input.places[0],
+        input.places[1],
+        input.places[2] ?? null,
+        input.places[3] ?? null,
+      );
+      return id;
+    } catch (err) {
+      const collision =
+        err instanceof Error &&
+        (err as Error & { errcode?: number }).errcode === 1555;
+      if (!collision || attempt >= 5) throw err;
+    }
+  }
+};
+
+export const normalizeSessionId = (raw: string) => {
+  const id = raw
+    .toLowerCase()
+    .replaceAll("i", "1")
+    .replaceAll("l", "1")
+    .replaceAll("o", "0");
+  return /^[0-9abcdefghjkmnpqrstvwxyz]{7}$/.test(id) ? id : null;
+};
+export const getSession = (id: string) => {
+  const normalized = normalizeSessionId(id);
+  if (normalized === null) return undefined;
+
+  return db.prepare("SELECT * FROM vote_sessions WHERE id = ?").get(normalized);
+};
