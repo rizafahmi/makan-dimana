@@ -4,12 +4,22 @@ import { DatabaseSync } from "node:sqlite";
 
 const file = resolve(process.env.MAKAN_DB ?? "data/makan.db");
 
-mkdirSync(dirname(file), { recursive: true });
+const open = () => {
+  mkdirSync(dirname(file), { recursive: true });
 
-export const db = new DatabaseSync(file);
+  const connection = new DatabaseSync(file);
+  const mode = connection
+    .prepare("PRAGMA journal_mode = DELETE")
+    .get()?.journal_mode;
 
-const mode = db.prepare("PRAGMA journal_mode = DELETE").get()?.journal_mode;
+  if (mode !== "delete") {
+    throw new Error(
+      `MAKAN_DB opened with journal_mode ${mode}, expected delete`,
+    );
+  }
+  return connection;
+};
 
-if (mode !== "delete") {
-  throw new Error(`MAKAN_DB opened with journal_mode ${mode}, expected delete`);
-}
+const store = globalThis as typeof globalThis & { makanDb?: DatabaseSync };
+
+export const db = (store.makanDb ??= open());

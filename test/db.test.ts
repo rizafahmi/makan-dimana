@@ -25,3 +25,11 @@ test("first import creates the database in DELETE journal mode", async () => {
   assert.equal(db.prepare("PRAGMA journal_mode").get()?.journal_mode, "delete");
   assert.equal(existsSync(`${file}-shm`), false);
 });
+
+test("re-evaluating the module reuses the one connection", async () => {
+  const reload = "../src/lib/db.ts?hmr";
+  const first = await import("../src/lib/db.ts");
+  const second = await import(reload);
+
+  assert.equal(second.db, first.db);
+});

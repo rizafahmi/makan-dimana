@@ -110,7 +110,7 @@ Pin these before writing the first test; the e2e suites hard-code them.
 - [x] Install `@astrojs/check` and `typescript` with `pnpm add -D @astrojs/check typescript`, then change the test script to `astro check && astro build && node --test` so `astro/tsconfigs/strict` is actually enforced
       `astro build` only strips types; without this step type errors reach runtime
       Done when: `pnpm test` reports zero type errors and still runs every suite, and a deliberately introduced type error makes it exit non-zero before the build runs
-- [ ] Add db connection module: create the directory, open MAKAN_DB (default data/makan.db), assert journal_mode = delete, globalThis singleton
+- [x] Add db connection module: create the directory, open MAKAN_DB (default data/makan.db), assert journal_mode = delete, globalThis singleton
       Done when: a node:test written first, pointing MAKAN_DB at a temporary path, passes - the file is created, `PRAGMA journal_mode` returns delete, no -wal sidecar appears, and importing twice yields the same connection
 - [ ] Create vote_sessions on first import of the db module with CREATE TABLE IF NOT EXISTS
       Use:
