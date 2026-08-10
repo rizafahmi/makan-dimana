@@ -37,15 +37,17 @@ Every page is rendered on demand by the server through `@astrojs/node`; there is
 
 | Command | Action |
 | :------ | :----- |
-| `npm install` | Install dependencies |
-| `npm run dev` | Start the dev server at `localhost:4321` |
-| `npm run build` | Build to `./dist/` |
-| `npm run preview` | Preview the production build |
-| `npm test` | Typecheck, build, then run the `node:test` suites in `test/` |
+| `pnpm install` | Install dependencies |
+| `pnpm dev` | Start the dev server at `localhost:4321` |
+| `pnpm build` | Build to `./dist/` |
+| `pnpm preview` | Preview the production build |
+| `pnpm test` | Typecheck, build, then run the `node:test` suites in `test/` |
+
+pnpm is the package manager; `packageManager` in `package.json` pins the version and `.npmrc` sets `save-exact=true`, so `pnpm add <pkg>` writes exact versions without a flag.
 
 Every suite is `test/*.test.ts`. Unit suites exercise `src/lib` directly; e2e suites spawn the built server. Both run against a temporary database, so they never touch your local `data/makan.db`.
 
-`npm test` runs `astro check` first, because `astro build` strips types without checking them.
+`pnpm test` runs `astro check` first, because `astro build` strips types without checking them.
 
 ## Contributing
 

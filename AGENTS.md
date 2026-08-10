@@ -11,7 +11,8 @@ Read this section before taking any action.
 * I'm an experienced developer. Do not explain syntax, APIs, programming concepts, or implementation details unless I ask.
 * Every page renders on the server. No client-side data fetching.
 * Avoid third-party dependencies. Prefer `node:` builtins and Astro's own APIs. Adding any dependency needs my approval first.
-* Pin exact versions. Install with `npm install --save-exact`.
+* pnpm is the only package manager here. Never run `npm install` or `yarn` - a stray npm install prunes pnpm's tree and desyncs the lockfile.
+* Pin exact versions. `.npmrc` sets `save-exact=true`, so plain `pnpm add <pkg>` already writes an exact version; no flag to remember.
 * Vanilla CSS only. No Tailwind, no CSS framework, no CSS-in-JS, no UI framework components.
 * No comments, annotations, or JSDoc in source files.
 * Test-driven development, always. See below.
@@ -39,9 +40,9 @@ Node 24 is the floor because both `node:sqlite` and TypeScript type stripping ar
 ## Commands
 
 * `astro dev --background` starts the dev server. Manage it with `astro dev stop`, `astro dev status`, and `astro dev logs`.
-* `npm run build` produces the production build in `dist/`.
+* `pnpm build` produces the production build in `dist/`.
 * `node --test test/db.test.ts` runs one suite with no build. This is the red-green loop.
-* `npm test` runs `astro check && astro build && node --test`. Run it before calling any step done. `astro build` only strips types, so `astro check` is what enforces `astro/tsconfigs/strict`. Tests must never touch the default `data/makan.db`.
+* `pnpm test` runs `astro check && astro build && node --test`. Run it before calling any step done. `astro build` only strips types, so `astro check` is what enforces `astro/tsconfigs/strict`. Tests must never touch the default `data/makan.db`.
 
 ### Test layout
 

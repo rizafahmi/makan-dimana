@@ -105,11 +105,11 @@ Pin these before writing the first test; the e2e suites hard-code them.
       - Retain the existing `"test": "astro build && node --test"` script
       This item's red half stands alone; its green half cannot land until the adapter in the next item exists. Leave it unchecked until both are done
       Done when: the harness first fails because no `dist/server/entry.mjs` exists, then passes on a 200 from `/` once the adapter is configured, without creating or modifying data/makan.db
-- [ ] Install `@astrojs/node` with `npm install --save-exact`; configure `adapter: node({ mode: 'standalone', bodySizeLimit: 16384 })` and `output: 'server'`. Leave `trailingSlash` at its default; with no canonical redirect there is nothing for it to enforce
+- [ ] Install `@astrojs/node` with `pnpm add @astrojs/node`; configure `adapter: node({ mode: 'standalone', bodySizeLimit: 16384 })` and `output: 'server'`. Leave `trailingSlash` at its default; with no canonical redirect there is nothing for it to enforce
       Done when: the harness smoke test turns green
-- [ ] Install `@astrojs/check` and `typescript` with `npm install --save-exact --save-dev`, then change the test script to `astro check && astro build && node --test` so `astro/tsconfigs/strict` is actually enforced
+- [ ] Install `@astrojs/check` and `typescript` with `pnpm add -D @astrojs/check typescript`, then change the test script to `astro check && astro build && node --test` so `astro/tsconfigs/strict` is actually enforced
       `astro build` only strips types; without this step type errors reach runtime
-      Done when: `npm test` reports zero type errors and still runs every suite, and a deliberately introduced type error makes it exit non-zero before the build runs
+      Done when: `pnpm test` reports zero type errors and still runs every suite, and a deliberately introduced type error makes it exit non-zero before the build runs
 - [ ] Add db connection module: create the directory, open MAKAN_DB (default data/makan.db), assert journal_mode = delete, globalThis singleton
       Done when: a node:test written first, pointing MAKAN_DB at a temporary path, passes - the file is created, `PRAGMA journal_mode` returns delete, no -wal sidecar appears, and importing twice yields the same connection
 - [ ] Create vote_sessions on first import of the db module with CREATE TABLE IF NOT EXISTS
@@ -174,7 +174,7 @@ Pin these before writing the first test; the e2e suites hard-code them.
 
 - [ ] Serve valid non-canonical ids in place, without redirecting
       Done when: /s/ABC12QX renders the same session as /s/abc12qx with 200, /s/abc12ox renders the same session as /s/abc120x with 200, voting through a non-canonical URL updates the same row the canonical one shows, and malformed ids still return 404
-- [ ] Install `qrcode` and `@types/qrcode` (the latter with `--save-dev`) using `npm install --save-exact`; render the QR server-side with `QRCode.toString(url, { type: 'svg' })` so no client JS is added
+- [ ] Install with `pnpm add qrcode` and `pnpm add -D @types/qrcode`; render the QR server-side with `QRCode.toString(url, { type: 'svg' })` so no client JS is added
       The payload is the absolute canonical session URL based on the current request origin; deployment must preserve the public scheme and Host header
       The SVG is injected with `set:html`. That is the only place in the app where Astro's auto-escaping is bypassed, and the input is library-generated; user-supplied titles and place names must never be rendered that way
       Show the canonical share URL as text and give the QR an accessible Indonesian label
@@ -191,7 +191,7 @@ Pin these before writing the first test; the e2e suites hard-code them.
 
 ### 6. Final verification
 
-- [ ] Run `npm test`
+- [ ] Run `pnpm test`
       Done when: `astro check` reports zero errors, the build succeeds, and all node:test suites pass
 - [ ] Verify a clean checkout boots
       - `data/` is gitignored, so a fresh clone has no database at all
