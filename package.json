@@ -9,11 +9,17 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
-    "test": "astro build && node --test",
+    "test": "astro check && astro build && node --test",
     "preview": "astro preview",
     "astro": "astro"
   },
   "dependencies": {
+    "@astrojs/node": "11.1.0",
     "astro": "7.2.0"
+  },
+  "devDependencies": {
+    "@astrojs/check": "0.9.10",
+    "@types/node": "24.13.3",
+    "typescript": "6.0.3"
   }
 }

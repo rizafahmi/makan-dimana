@@ -94,7 +94,7 @@ Pin these before writing the first test; the e2e suites hard-code them.
 
 ### 1. Foundation
 
-- [ ] Add e2e harness in `test/*.test.ts`: node:test spawns `node dist/server/entry.mjs` with `PORT=0`, HOST, and MAKAN_DB pointing at a unique temporary database
+- [x] Add e2e harness in `test/*.test.ts`: node:test spawns `node dist/server/entry.mjs` with `PORT=0`, HOST, and MAKAN_DB pointing at a unique temporary database
       - `PORT=0` lets the OS assign a free port, so there is no port collision to retry. First confirm the adapter logs its *resolved* listening address rather than the configured value; if it does not, fall back to a random high port with retry-on-EADDRINUSE
       - Read the assigned port from the child's stdout, then poll an HTTP endpoint until ready with a bounded timeout
       - Capture child stdout/stderr and surface both when startup fails. Never treat non-empty stderr as failure on its own - a Node deprecation warning is not a startup failure. Readiness is the HTTP poll
@@ -105,9 +105,9 @@ Pin these before writing the first test; the e2e suites hard-code them.
       - Retain the existing `"test": "astro build && node --test"` script
       This item's red half stands alone; its green half cannot land until the adapter in the next item exists. Leave it unchecked until both are done
       Done when: the harness first fails because no `dist/server/entry.mjs` exists, then passes on a 200 from `/` once the adapter is configured, without creating or modifying data/makan.db
-- [ ] Install `@astrojs/node` with `pnpm add @astrojs/node`; configure `adapter: node({ mode: 'standalone', bodySizeLimit: 16384 })` and `output: 'server'`. Leave `trailingSlash` at its default; with no canonical redirect there is nothing for it to enforce
+- [x] Install `@astrojs/node` with `pnpm add @astrojs/node`; configure `adapter: node({ mode: 'standalone', bodySizeLimit: 16384 })` and `output: 'server'`. Leave `trailingSlash` at its default; with no canonical redirect there is nothing for it to enforce
       Done when: the harness smoke test turns green
-- [ ] Install `@astrojs/check` and `typescript` with `pnpm add -D @astrojs/check typescript`, then change the test script to `astro check && astro build && node --test` so `astro/tsconfigs/strict` is actually enforced
+- [x] Install `@astrojs/check` and `typescript` with `pnpm add -D @astrojs/check typescript`, then change the test script to `astro check && astro build && node --test` so `astro/tsconfigs/strict` is actually enforced
       `astro build` only strips types; without this step type errors reach runtime
       Done when: `pnpm test` reports zero type errors and still runs every suite, and a deliberately introduced type error makes it exit non-zero before the build runs
 - [ ] Add db connection module: create the directory, open MAKAN_DB (default data/makan.db), assert journal_mode = delete, globalThis singleton

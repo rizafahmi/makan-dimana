@@ -12,7 +12,7 @@ Read this section before taking any action.
 * Every page renders on the server. No client-side data fetching.
 * Avoid third-party dependencies. Prefer `node:` builtins and Astro's own APIs. Adding any dependency needs my approval first.
 * pnpm is the only package manager here. Never run `npm install` or `yarn` - a stray npm install prunes pnpm's tree and desyncs the lockfile.
-* Pin exact versions. `.npmrc` sets `save-exact=true`, so plain `pnpm add <pkg>` already writes an exact version; no flag to remember.
+* Pin exact versions. `pnpm-workspace.yaml` sets `saveExact: true`, so plain `pnpm add <pkg>` already writes an exact version; no flag to remember.
 * Vanilla CSS only. No Tailwind, no CSS framework, no CSS-in-JS, no UI framework components.
 * No comments, annotations, or JSDoc in source files.
 * Test-driven development, always. See below.
