@@ -4,25 +4,32 @@ Gather food place ideas and vote on them as a group. One person creates a vote s
 
 ## Requirements
 
-Node >= 22.18.0, where `node --test` strips TypeScript without a flag. No database server: the app uses `node:sqlite` against a file committed to the repo at `data/makan.db`, overridable with the `MAKAN_DB` environment variable.
+Node >= 24.0.0, where both `node:sqlite` and TypeScript type stripping work without a flag. No database server: the app uses `node:sqlite` against a local file at `data/makan.db`, overridable with the `MAKAN_DB` environment variable. The file is gitignored and created on first run, so a fresh clone needs no setup step.
 
 ## Project structure
 
 ```text
 /
 ├── data/
-│   └── makan.db
+│   └── makan.db        # gitignored, created on first run
 ├── public/
 ├── src/
+│   ├── layouts/
+│   │   └── Base.astro
 │   ├── lib/
 │   │   └── db.ts
-│   └── pages/
-│       ├── index.astro
-│       └── s/[id].astro
+│   ├── pages/
+│   │   ├── index.astro
+│   │   ├── new.astro
+│   │   └── s/[id].astro
+│   └── styles/
+│       └── global.css
 ├── test/
 ├── AGENTS.md
 └── PLAN.md
 ```
+
+`/` lists the public sessions, `/new` creates one, and `/s/[id]` is the share link where people vote and the winner appears.
 
 Every page is rendered on demand by the server through `@astrojs/node`; there is no client-side data fetching and no UI framework.
 
@@ -34,9 +41,11 @@ Every page is rendered on demand by the server through `@astrojs/node`; there is
 | `npm run dev` | Start the dev server at `localhost:4321` |
 | `npm run build` | Build to `./dist/` |
 | `npm run preview` | Preview the production build |
-| `npm test` | Build, then run the `node:test` suites in `test/` |
+| `npm test` | Typecheck, build, then run the `node:test` suites in `test/` |
 
-Tests spawn the built server on a random port against a temporary database, so they never touch `data/makan.db`.
+Every suite is `test/*.test.ts`. Unit suites exercise `src/lib` directly; e2e suites spawn the built server. Both run against a temporary database, so they never touch your local `data/makan.db`.
+
+`npm test` runs `astro check` first, because `astro build` strips types without checking them.
 
 ## Contributing
 

@@ -23,7 +23,5 @@ pnpm-debug.log*
 # jetbrains setting folder
 .idea/
 
-# sqlite sidecars; data/*.db itself is committed
-data/*.db-wal
-data/*.db-shm
-data/*.db-journal
+# local database, created on first run
+data/
