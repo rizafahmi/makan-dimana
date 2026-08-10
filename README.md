@@ -43,7 +43,7 @@ Every page is rendered on demand by the server through `@astrojs/node`; there is
 | `pnpm preview` | Preview the production build |
 | `pnpm test` | Typecheck, build, then run the `node:test` suites in `test/` |
 
-pnpm is the package manager; `packageManager` in `package.json` pins the version and `.npmrc` sets `save-exact=true`, so `pnpm add <pkg>` writes exact versions without a flag.
+pnpm is the package manager; `packageManager` in `package.json` pins the version and `pnpm-workspace.yaml` sets `saveExact: true`, so `pnpm add <pkg>` writes exact versions without a flag.
 
 Every suite is `test/*.test.ts`. Unit suites exercise `src/lib` directly; e2e suites spawn the built server. Both run against a temporary database, so they never touch your local `data/makan.db`.
 
