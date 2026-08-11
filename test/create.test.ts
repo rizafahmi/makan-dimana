@@ -81,3 +81,23 @@ test("the detail page lists each filled place at zero votes and skips empty slot
   assert.ok(html.includes("Warteg"));
   assert.ok(html.includes("Padang"));
 });
+
+test("invalid create input returns 422 with errors and submitted values perserved", async () => {
+  const res = await fetch(`${server.origin}/new`, {
+    method: "POST",
+    headers: { origin: server.origin },
+    body: new URLSearchParams({
+      title: "",
+      place1: "Warteg Bahari",
+      place2: "  ",
+      place3: "",
+      place4: "",
+    }),
+    redirect: "manual",
+  });
+  assert.equal(res.status, 422);
+  const html = await res.text();
+  assert.ok(html.includes("Judul wajib diisi"));
+  assert.ok(html.includes("Isi minimal 2 tempat"));
+  assert.ok(html.includes('value="Warteg Bahari"'));
+});

@@ -136,7 +136,7 @@ Pin these before writing the first test; the e2e suites hard-code them.
       Done when: /s/zzzzzzz (well-formed but unknown), /s/zzzzzz, /s/short, /s/abc12u3, and /s/abc12!3 all return 404 rather than 500
 - [x] Render place names and vote counts on /s/[id], skipping empty slots, with data-place and data-votes attributes as test hooks
       Done when: a 2-place session shows exactly 2 places at 0 votes
-- [ ] Validate the create form: trim title and all place names; title required and max 100 chars; each non-empty place max 60 chars; require 2-4 non-empty places; compact accepted places into sequential database slots
+- [x] Validate the create form: trim title and all place names; title required and max 100 chars; each non-empty place max 60 chars; require 2-4 non-empty places; compact accepted places into sequential database slots
       Return 422 and re-render errors with the original submitted fields preserved
       Done when: submitting 1 place writes no row; whitespace-only places do not count; inputs in slots 2 and 4 are stored as place1 and place2; duplicate names are accepted; and the 422 body contains both the field error messages and the previously submitted title and place values
 - [ ] Implement landing page: link to /new, empty state, and public sessions list ordered by `created_at DESC, rowid DESC` with `LIMIT 20`, with open/closed state visible
