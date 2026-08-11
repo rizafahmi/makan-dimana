@@ -48,3 +48,10 @@ test("GET /new renders the create form fields", async () => {
   }
   assert.match(html, /<button[^>]*>/);
 });
+
+test("unknown and malformed session IDs return 404", async () => {
+  for (const id of ["zzzzzzz", "zzzzzz", "short", "abc12u3", "abc12!3"]) {
+    const res = await fetch(`${server.origin}/s/${id}`);
+    assert.equal(res.status, 404, `id ${id} gave ${res.status}`);
+  }
+});

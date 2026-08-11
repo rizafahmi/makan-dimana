@@ -3,7 +3,10 @@ import Base from "../../layouts/Base.astro";
 import { getSession } from "../../lib/db.ts";
 
 const session = getSession(Astro.params.id ?? "");
-const title = String(session?.title ?? "");
+if (session === undefined) {
+  return new Response(null, { status: 404 });
+}
+const title = String(session.title);
 ---
 
 <Base title={title}>

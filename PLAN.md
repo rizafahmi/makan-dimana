@@ -132,7 +132,7 @@ Pin these before writing the first test; the e2e suites hard-code them.
 - [x] Add /new and minimal /s/[id] on `src/layouts/Base.astro`: the form posts title + 4 place inputs to /new; successful insertion redirects with 303; the detail page shows the title
       Blank place inputs are inserted as NULL from the first commit, so the CHECK constraint never fires
       Done when: an e2e test written first - POST /new with a title and 2 places, asserting a 303 to the canonical /s/[id], the title on that page, `<html lang="id">`, and the viewport meta - goes red then green, and refreshing the detail page does not resubmit
-- [ ] Return 404 for unknown or malformed session id
+- [x] Return 404 for unknown or malformed session id
       Done when: /s/zzzzzzz (well-formed but unknown), /s/zzzzzz, /s/short, /s/abc12u3, and /s/abc12!3 all return 404 rather than 500
 - [ ] Render place names and vote counts on /s/[id], skipping empty slots, with data-place and data-votes attributes as test hooks
       Done when: a 2-place session shows exactly 2 places at 0 votes
