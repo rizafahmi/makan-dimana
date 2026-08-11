@@ -129,7 +129,7 @@ Pin these before writing the first test; the e2e suites hard-code them.
 
 ### 2. Create and view
 
-- [ ] Add /new and minimal /s/[id] on `src/layouts/Base.astro`: the form posts title + 4 place inputs to /new; successful insertion redirects with 303; the detail page shows the title
+- [x] Add /new and minimal /s/[id] on `src/layouts/Base.astro`: the form posts title + 4 place inputs to /new; successful insertion redirects with 303; the detail page shows the title
       Blank place inputs are inserted as NULL from the first commit, so the CHECK constraint never fires
       Done when: an e2e test written first - POST /new with a title and 2 places, asserting a 303 to the canonical /s/[id], the title on that page, `<html lang="id">`, and the viewport meta - goes red then green, and refreshing the detail page does not resubmit
 - [ ] Return 404 for unknown or malformed session id

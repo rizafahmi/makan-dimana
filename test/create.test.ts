@@ -36,3 +36,15 @@ test("creating a session redirects to a detail page showing it's title", async (
   assert.match(html, /<meta name="viewport"/);
   assert.ok(html.includes("Makan siang tim"));
 });
+
+test("GET /new renders the create form fields", async () => {
+  const res = await fetch(`${server.origin}/new`);
+  assert.equal(res.status, 200);
+  const html = await res.text();
+  assert.match(html, /<form[^>]*method="post"/i);
+
+  for (const name of ["title", "place1", "place2", "place3", "place4"]) {
+    assert.match(html, new RegExp(`<input[^>]*name="${name}"`));
+  }
+  assert.match(html, /<button[^>]*>/);
+});
