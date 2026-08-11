@@ -55,3 +55,29 @@ test("unknown and malformed session IDs return 404", async () => {
     assert.equal(res.status, 404, `id ${id} gave ${res.status}`);
   }
 });
+
+test("the detail page lists each filled place at zero votes and skips empty slots", async () => {
+  const res = await fetch(`${server.origin}/new`, {
+    method: "POST",
+    headers: { origin: server.origin },
+    body: new URLSearchParams({
+      title: "Dua tempat",
+      place1: "Warteg",
+      place2: "Padang",
+      place3: "",
+      place4: "",
+    }),
+    redirect: "manual",
+  });
+
+  const location = String(res.headers.get("location"));
+
+  const html = await (await fetch(`${server.origin}${location}`)).text();
+
+  assert.match(html, /data-place="1"[^>]*data-votes="0"/);
+  assert.match(html, /data-place="2"[^>]*data-votes="0"/);
+  assert.equal(html.includes('data-place="3"'), false);
+  assert.equal(html.includes('data-place="4"'), false);
+  assert.ok(html.includes("Warteg"));
+  assert.ok(html.includes("Padang"));
+});

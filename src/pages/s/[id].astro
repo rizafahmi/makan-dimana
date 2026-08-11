@@ -7,8 +7,26 @@ if (session === undefined) {
   return new Response(null, { status: 404 });
 }
 const title = String(session.title);
+const places = [1, 2, 3, 4].flatMap((slot) => {
+  const name = session[`place${slot}_name`];
+  if (name === null || name === undefined) {
+    return [];
+  }
+  return [
+    { slot, name: String(name), votes: Number(session[`place${slot}_votes`]) },
+  ];
+});
 ---
 
 <Base title={title}>
   <h1>{title}</h1>
+  <ul>
+    {
+      places.map((place) => (
+        <li data-place={place.slot} data-votes={place.votes}>
+          {place.name}: {place.votes} suara
+        </li>
+      ))
+    }
+  </ul>
 </Base>

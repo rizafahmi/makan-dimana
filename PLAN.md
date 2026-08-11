@@ -134,7 +134,7 @@ Pin these before writing the first test; the e2e suites hard-code them.
       Done when: an e2e test written first - POST /new with a title and 2 places, asserting a 303 to the canonical /s/[id], the title on that page, `<html lang="id">`, and the viewport meta - goes red then green, and refreshing the detail page does not resubmit
 - [x] Return 404 for unknown or malformed session id
       Done when: /s/zzzzzzz (well-formed but unknown), /s/zzzzzz, /s/short, /s/abc12u3, and /s/abc12!3 all return 404 rather than 500
-- [ ] Render place names and vote counts on /s/[id], skipping empty slots, with data-place and data-votes attributes as test hooks
+- [x] Render place names and vote counts on /s/[id], skipping empty slots, with data-place and data-votes attributes as test hooks
       Done when: a 2-place session shows exactly 2 places at 0 votes
 - [ ] Validate the create form: trim title and all place names; title required and max 100 chars; each non-empty place max 60 chars; require 2-4 non-empty places; compact accepted places into sequential database slots
       Return 422 and re-render errors with the original submitted fields preserved
