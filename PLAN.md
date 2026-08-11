@@ -122,7 +122,7 @@ Pin these before writing the first test; the e2e suites hard-code them.
       - place1_votes through place4_votes INTEGER NOT NULL DEFAULT 0 with non-negative CHECK constraints
       - created_at TEXT NOT NULL DEFAULT (datetime('now'))
       Done when: a node:test written first asserts the columns, defaults, and CHECK constraints - including that an empty-string place name is rejected - and that a second import is a no-op
-- [ ] Add createSession + getSession; createSession accepts an optional id generator (`createSession(input, generateId = defaultGenerateId)`) as the test seam; retry id generation at most 5 times only when INSERT fails with a primary-key violation (`errcode === 1555`, SQLITE_CONSTRAINT_PRIMARYKEY - never match on the message string), and propagate every other SQLite error
+- [x] Add createSession + getSession; createSession accepts an optional id generator (`createSession(input, generateId = defaultGenerateId)`) as the test seam; retry id generation at most 5 times only when INSERT fails with a primary-key violation (`errcode === 1555`, SQLITE_CONSTRAINT_PRIMARYKEY - never match on the message string), and propagate every other SQLite error
       createSession writes NULL, never '', into unused place slots
       getSession normalizes and validates the id before lookup
       Done when: node:test round-trips a session, stores NULL for the unused slots of a 2-place session, covers a forced collision, propagates a non-collision database error, finds a session by a lookalike-typo id, and rejects malformed ids - each case watched fail before the code that satisfies it

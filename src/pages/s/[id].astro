@@ -1,0 +1,11 @@
+---
+import Base from "../../layouts/Base.astro";
+import { getSession } from "../../lib/db.ts";
+
+const session = getSession(Astro.params.id ?? "");
+const title = String(session?.title ?? "");
+---
+
+<Base title={title}>
+  <h1>{title}</h1>
+</Base>

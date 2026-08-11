@@ -1,0 +1,18 @@
+---
+import Base from "../layouts/Base.astro";
+import { createSession } from "../lib/db.ts";
+
+if (Astro.request.method === "POST") {
+  const form = await Astro.request.formData();
+  const title = String(form.get("title") ?? "");
+  const places = ["place1", "place2", "place3", "place4"]
+    .map((field) => String(form.get(field) ?? ""))
+    .filter((place) => place !== "");
+  const id = createSession({ title, places });
+  return Astro.redirect(`/s/${id}`, 303);
+}
+---
+
+<Base title="Bikin sesi baru">
+  <h1>Bikin sesi baru</h1>
+</Base>
