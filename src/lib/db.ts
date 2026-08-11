@@ -43,6 +43,7 @@ const store = globalThis as typeof globalThis & { makanDb?: DatabaseSync };
 export const db = (store.makanDb ??= open());
 
 const alphabet = "0123456789abcdefghjkmnpqrstvwxyz";
+const canonicalId = new RegExp(`^[${alphabet}]{7}$`);
 
 const defaultGenerateId = () => {
   let id = "";
@@ -86,7 +87,7 @@ export const normalizeSessionId = (raw: string) => {
     .replaceAll("i", "1")
     .replaceAll("l", "1")
     .replaceAll("o", "0");
-  return /^[0-9abcdefghjkmnpqrstvwxyz]{7}$/.test(id) ? id : null;
+  return canonicalId.test(id) ? id : null;
 };
 export const getSession = (id: string) => {
   const normalized = normalizeSessionId(id);
