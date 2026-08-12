@@ -1,17 +1,25 @@
 ---
+import Base from "../layouts/Base.astro";
+import { listSessions } from "../lib/db.ts";
 
+const sessions = listSessions();
 ---
 
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
-	</head>
-	<body>
-		<h1>Astro</h1>
-	</body>
-</html>
+<Base title="Makan Dimana">
+  <h1>Makan Dimana</h1>
+  <a href="/new">Bikin sesi vote baru</a>
+  {sessions.length === 0 && <p>Belum ada sesi.</p>}
+  <ul>
+    {
+      sessions.length > 0 &&
+        sessions.map((session) => (
+          <li>
+            <>
+              <a href={`/s/${session.id}`}>{session.title}</a>
+              <span data-open={session.is_open}>Masih buka</span>
+            </>
+          </li>
+        ))
+    }
+  </ul>
+</Base>

@@ -231,3 +231,33 @@ test("normalizeSessionId canonicalizes valid ids and rejects malformed ones", as
   assert.equal(normalizeSessionId("toolong1"), null);
   assert.equal(normalizeSessionId("abc12!3"), null);
 });
+
+test("listSessions orders newest first, breaking created_at ties by rowid", async () => {
+  const { db, listSessions } = await import("../src/lib/db.ts");
+  db.exec("DELETE FROM vote_sessions");
+  const seed = db.prepare(
+    "INSERT INTO vote_sessions(id, title, place1_name, place2_name, created_at) VALUES (?, ?, 'A', 'B', ?)",
+  );
+  seed.run("older00", "Kemarin", "2026-08-10 09:00:00");
+  seed.run("tiedaa0", "Seri A", "2026-08-11 09:00:00");
+  seed.run("tiedbb0", "Seri B", "2026-08-11 09:00:00");
+
+  const ids = listSessions().map((row) => row.id);
+  assert.deepEqual(ids, ["tiedbb0", "tiedaa0", "older00"]);
+});
+
+test("listSessions returns at most 20 rows, dropping the oldest", async () => {
+  const { db, listSessions } = await import("../src/lib/db.ts");
+
+  db.exec("DELETE FROM vote_sessions");
+  const seed = db.prepare(
+    "INSERT INTO vote_sessions (id, title, place1_name, place2_name, created_at) values (?, ?,'A','B', '2026-08-12 09:00:00')",
+  );
+  for (let n = 1; n <= 21; n++) {
+    seed.run(`sesi${String(n).padStart(3, "0")}`, `Sesi ${n}`);
+  }
+  const ids = listSessions().map((row) => row.id);
+  assert.equal(ids.length, 20);
+  assert.equal(ids.includes("sesi001"), false);
+  assert.equal(ids[0], "sesi021");
+});

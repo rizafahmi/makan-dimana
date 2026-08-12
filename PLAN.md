@@ -159,7 +159,7 @@ Pin these before writing the first test; the e2e suites hard-code them.
 ### 4. Closing and winner
 
 - [ ] Add close: form POST calls setSessionOpen(id, false), redirects with 303, and hides vote and close controls
-      Done when: a closed session renders without vote buttons, shows the reopen control, and closing it again is an idempotent 303
+      Done when: a closed session renders without vote buttons, shows the reopen control, and closing it again is an idempotent 303 and the landing list shows the closed session as Sudah ditutup with data-open="0"
 - [ ] Verify the closed-session rejection over HTTP now that close is reachable
       Done when: an e2e test creates a session, closes it, then posts an upvote and gets 409 with the count unchanged and the Indonesian error body
 - [ ] Highlight the winner only among populated place slots on a closed session, using `data-winner` and a text label rather than color alone

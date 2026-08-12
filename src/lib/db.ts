@@ -95,3 +95,10 @@ export const getSession = (id: string) => {
 
   return db.prepare("SELECT * FROM vote_sessions WHERE id = ?").get(normalized);
 };
+
+export const listSessions = () =>
+  db
+    .prepare(
+      "SELECT * FROM vote_sessions ORDER BY created_at DESC, rowid DESC LIMIT 20",
+    )
+    .all();
