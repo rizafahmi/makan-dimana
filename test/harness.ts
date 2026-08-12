@@ -65,3 +65,15 @@ export const startServer = async () => {
   await stop();
   throw startupError("timed out waiting for server to listen");
 };
+
+export const postForm = (
+  origin: string,
+  path: string,
+  fields: Record<string, string>,
+) =>
+  fetch(`${origin}${path}`, {
+    method: "POST",
+    headers: { origin },
+    body: new URLSearchParams(fields),
+    redirect: "manual",
+  });

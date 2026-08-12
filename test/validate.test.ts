@@ -54,7 +54,7 @@ test("validateCreate requires at least two non-empty places", () => {
   });
 });
 
-test("validatCreate rejects on overlong place name against its original slot", () => {
+test("validatCreate rejects an overlong place name against its original slot", () => {
   const overlong = validateCreate({
     title: "Makan siang",
     places: ["Warteg", "", "x".repeat(61), "Padang"],

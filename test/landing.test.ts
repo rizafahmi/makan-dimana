@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
-import { startServer } from "./harness.ts";
+import { startServer, postForm } from "./harness.ts";
 
 let server: Awaited<ReturnType<typeof startServer>>;
 
@@ -23,17 +23,12 @@ test("a fresh database shows the empty state and a link to /new", async () => {
 });
 
 const create = async (title: string) => {
-  const res = await fetch(`${server.origin}/new`, {
-    method: "POST",
-    headers: { origin: server.origin },
-    body: new URLSearchParams({
-      title,
-      place1: "Warteg",
-      place2: "Padang",
-      place3: "",
-      place4: "",
-    }),
-    redirect: "manual",
+  const res = await postForm(server.origin, "/new", {
+    title,
+    place1: "Warteg",
+    place2: "Padang",
+    place3: "",
+    place4: "",
   });
   return String(res.headers.get("location"));
 };

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
-import { startServer } from "./harness.ts";
+import { startServer, postForm } from "./harness.ts";
 
 let server: Awaited<ReturnType<typeof startServer>>;
 
@@ -12,18 +12,13 @@ after(async () => {
   await server.stop();
 });
 
-test("creating a session redirects to a detail page showing it's title", async () => {
-  const res = await fetch(`${server.origin}/new`, {
-    method: "POST",
-    headers: { origin: server.origin },
-    body: new URLSearchParams({
-      title: "Makan siang tim",
-      place1: "Warteg",
-      place2: "Padang",
-      place3: "",
-      place4: "",
-    }),
-    redirect: "manual",
+test("creating a session redirects to a detail page showing its title", async () => {
+  const res = await postForm(server.origin, "/new", {
+    title: "Makan siang tim",
+    place1: "Warteg",
+    place2: "Padang",
+    place3: "",
+    place4: "",
   });
   assert.equal(res.status, 303);
   const location = String(res.headers.get("location"));
@@ -57,17 +52,12 @@ test("unknown and malformed session IDs return 404", async () => {
 });
 
 test("the detail page lists each filled place at zero votes and skips empty slots", async () => {
-  const res = await fetch(`${server.origin}/new`, {
-    method: "POST",
-    headers: { origin: server.origin },
-    body: new URLSearchParams({
-      title: "Dua tempat",
-      place1: "Warteg",
-      place2: "Padang",
-      place3: "",
-      place4: "",
-    }),
-    redirect: "manual",
+  const res = await postForm(server.origin, "/new", {
+    title: "Dua tempat",
+    place1: "Warteg",
+    place2: "Padang",
+    place3: "",
+    place4: "",
   });
 
   const location = String(res.headers.get("location"));
@@ -82,18 +72,13 @@ test("the detail page lists each filled place at zero votes and skips empty slot
   assert.ok(html.includes("Padang"));
 });
 
-test("invalid create input returns 422 with errors and submitted values perserved", async () => {
-  const res = await fetch(`${server.origin}/new`, {
-    method: "POST",
-    headers: { origin: server.origin },
-    body: new URLSearchParams({
-      title: "",
-      place1: "Warteg Bahari",
-      place2: "  ",
-      place3: "",
-      place4: "",
-    }),
-    redirect: "manual",
+test("invalid create input returns 422 with errors and submitted values preserved", async () => {
+  const res = await postForm(server.origin, "/new", {
+    title: "",
+    place1: "Warteg Bahari",
+    place2: "  ",
+    place3: "",
+    place4: "",
   });
   assert.equal(res.status, 422);
   const html = await res.text();

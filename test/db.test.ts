@@ -149,7 +149,7 @@ test("createSession round-trips a 2-place session with null unused slots", async
   assert.equal(session?.place4_name, null);
 });
 
-test("createSession retries id generation n a primary-key collision", async () => {
+test("createSession retries id generation on a primary-key collision", async () => {
   const { createSession, getSession } = await import("../src/lib/db.ts");
 
   const taken = createSession({
