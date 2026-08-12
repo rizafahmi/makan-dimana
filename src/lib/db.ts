@@ -102,3 +102,22 @@ export const listSessions = () =>
       "SELECT * FROM vote_sessions ORDER BY created_at DESC, rowid DESC LIMIT 20",
     )
     .all();
+
+type FailureReason = "not_found" | "closed" | "no_such_place";
+const fail = (reason: FailureReason) => ({ ok: false as const, reason });
+const voteUpdates = [
+  "UPDATE vote_sessions SET place1_votes = MAX(0, place1_votes + ?) WHERE id = ? AND place1_name IS NOT NULL",
+  "UPDATE vote_sessions SET place2_votes = MAX(0, place2_votes + ?) WHERE id = ? AND place2_name IS NOT NULL",
+  "UPDATE vote_sessions SET place3_votes = MAX(0, place3_votes + ?) WHERE id = ? AND place3_name IS NOT NULL",
+  "UPDATE vote_sessions SET place4_votes = MAX(0, place4_votes + ?) WHERE id = ? AND place4_name IS NOT NULL",
+];
+
+export const recordVote = (id: string, place: number, delta: number) => {
+  const result = db.prepare(voteUpdates[place - 1]).run(delta, id);
+  if (result.changes === 0) {
+    return getSession(id) === undefined
+      ? fail("not_found")
+      : fail("no_such_place");
+  }
+  return { ok: true as const };
+};

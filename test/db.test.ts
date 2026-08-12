@@ -261,3 +261,53 @@ test("listSessions returns at most 20 rows, dropping the oldest", async () => {
   assert.equal(ids.includes("sesi001"), false);
   assert.equal(ids[0], "sesi021");
 });
+
+test("recordVote increments only the voted place on an open session", async () => {
+  const { createSession, getSession, recordVote } =
+    await import("../src/lib/db.ts");
+
+  const id = createSession({
+    title: "Voting",
+    places: ["Warteg", "Padang", "Sate"],
+  });
+  const result = recordVote(id, 2, 1);
+
+  assert.deepEqual(result, { ok: true });
+  const session = getSession(id);
+
+  assert.equal(session?.place1_votes, 0);
+  assert.equal(session?.place2_votes, 1);
+  assert.equal(session?.place3_votes, 0);
+});
+
+test("recordVote clamps a downvote at zero", async () => {
+  const { createSession, getSession, recordVote } =
+    await import("../src/lib/db.ts");
+  const id = createSession({ title: "Clamp", places: ["Warteg", "Padang"] });
+  const result = recordVote(id, 1, -1);
+
+  assert.deepEqual(result, { ok: true });
+  assert.equal(getSession(id)?.place1_votes, 0);
+});
+
+test("recordVote reprts not_found for an unknown session", async () => {
+  const { recordVote } = await import("../src/lib/db.ts");
+
+  assert.deepEqual(recordVote("zzzzzzz", 1, 1), {
+    ok: false,
+    reason: "not_found",
+  });
+});
+
+test("recordVote reports no_such_place for an empty optional slot", async () => {
+  const { createSession, getSession, recordVote } =
+    await import("../src/lib/db.ts");
+
+  const id = createSession({
+    title: "Dua tempat",
+    places: ["Warteg", "Padang"],
+  });
+  const result = recordVote(id, 3, 1);
+  assert.deepEqual(result, { ok: false, reason: "no_such_place" });
+  assert.equal(getSession(id)?.place3_votes, 0);
+});
