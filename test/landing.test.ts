@@ -50,3 +50,8 @@ test("created sessions appear on the landing list newest first with open state",
   assert.ok(html.indexOf("Sesi kedua") < html.indexOf("Sesi pertama"));
   assert.match(html, /data-open="1"[^>]*>Masih buka/);
 });
+
+test("each listed session shows its Indonesian relative age", async () => {
+  const html = await (await fetch(server.origin)).text();
+  assert.match(html, /baru saja/);
+});

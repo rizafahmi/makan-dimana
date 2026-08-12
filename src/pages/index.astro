@@ -1,8 +1,13 @@
 ---
 import Base from "../layouts/Base.astro";
 import { listSessions } from "../lib/db.ts";
+import { relativeTime } from "../lib/time.ts";
 
 const sessions = listSessions();
+
+const now = new Date();
+const age = (createdAt: unknown) =>
+  relativeTime(new Date(`${String(createdAt).replace(" ", "T")}Z`), now);
 ---
 
 <Base title="Makan Dimana">
@@ -17,6 +22,7 @@ const sessions = listSessions();
             <>
               <a href={`/s/${session.id}`}>{session.title}</a>
               <span data-open={session.is_open}>Masih buka</span>
+              <span>{age(session.created_at)}</span>
             </>
           </li>
         ))
