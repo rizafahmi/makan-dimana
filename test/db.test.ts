@@ -311,3 +311,34 @@ test("recordVote reports no_such_place for an empty optional slot", async () => 
   assert.deepEqual(result, { ok: false, reason: "no_such_place" });
   assert.equal(getSession(id)?.place3_votes, 0);
 });
+
+test("setSessionOpen closes and reopens a session", async () => {
+  const { createSession, getSession, setSessionOpen } =
+    await import("../src/lib/db.ts");
+
+  const id = createSession({ title: "Tutup", places: ["Warteg", "Padang"] });
+  assert.deepEqual(setSessionOpen(id, false), { ok: true });
+  assert.equal(getSession(id)?.is_open, 0);
+  assert.deepEqual(setSessionOpen(id, true), { ok: true });
+  assert.equal(getSession(id)?.is_open, 1);
+});
+
+test("setSession reports not_found for an unknown session", async () => {
+  const { setSessionOpen } = await import("../src/lib/db.ts");
+  assert.deepEqual(setSessionOpen("zzzzzzz", false), {
+    ok: false,
+    reason: "not_found",
+  });
+});
+
+test("recordVote reports closed once the session is closed", async () => {
+  const { createSession, getSession, recordVote, setSessionOpen } =
+    await import("../src/lib/db.ts");
+  const id = createSession({ title: "ditutup", places: ["Warteg", "Padang"] });
+  recordVote(id, 1, 1);
+  setSessionOpen(id, false);
+  const result = recordVote(id, 1, 1);
+
+  assert.deepEqual(result, { ok: false, reason: "closed" });
+  assert.equal(getSession(id)?.place1_votes, 1);
+});

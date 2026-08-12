@@ -147,7 +147,7 @@ Pin these before writing the first test; the e2e suites hard-code them.
 
 ### 3. Voting
 
-- [ ] Add `recordVote(id, place, delta)` and `setSessionOpen(id, isOpen)` to `src/lib`, each as one conditional SQL UPDATE. recordVote increments or decrements only the mapped column, requires `is_open = 1` and a non-null place name, and clamps downvotes with MAX(0, votes - 1)
+- [x] Add `recordVote(id, place, delta)` and `setSessionOpen(id, isOpen)` to `src/lib`, each as one conditional SQL UPDATE. recordVote increments or decrements only the mapped column, requires `is_open = 1` and a non-null place name, and clamps downvotes with MAX(0, votes - 1)
       Done when: unit tests written first cover incrementing exactly one present place, clamping a 0-vote place at 0, `reason: 'no_such_place'` for an empty slot, `reason: 'closed'` after setSessionOpen(id, false), and `reason: 'not_found'` for an unknown id - all provable before any close route exists
 - [ ] Wire upvote and downvote on /s/[id] to recordVote and map results to status codes
       Done when: an e2e upvote increments one place and survives a refresh, a downvote at 0 stays at 0, an empty place slot returns 400, and neither changes any other count

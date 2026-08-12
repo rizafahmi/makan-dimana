@@ -106,18 +106,27 @@ export const listSessions = () =>
 type FailureReason = "not_found" | "closed" | "no_such_place";
 const fail = (reason: FailureReason) => ({ ok: false as const, reason });
 const voteUpdates = [
-  "UPDATE vote_sessions SET place1_votes = MAX(0, place1_votes + ?) WHERE id = ? AND place1_name IS NOT NULL",
-  "UPDATE vote_sessions SET place2_votes = MAX(0, place2_votes + ?) WHERE id = ? AND place2_name IS NOT NULL",
-  "UPDATE vote_sessions SET place3_votes = MAX(0, place3_votes + ?) WHERE id = ? AND place3_name IS NOT NULL",
-  "UPDATE vote_sessions SET place4_votes = MAX(0, place4_votes + ?) WHERE id = ? AND place4_name IS NOT NULL",
+  "UPDATE vote_sessions SET place1_votes = MAX(0, place1_votes + ?) WHERE id = ? AND is_open = 1 AND place1_name IS NOT NULL",
+  "UPDATE vote_sessions SET place2_votes = MAX(0, place2_votes + ?) WHERE id = ? AND is_open = 1 AND place2_name IS NOT NULL",
+  "UPDATE vote_sessions SET place3_votes = MAX(0, place3_votes + ?) WHERE id = ? AND is_open = 1 AND place3_name IS NOT NULL",
+  "UPDATE vote_sessions SET place4_votes = MAX(0, place4_votes + ?) WHERE id = ? AND is_open = 1 AND place4_name IS NOT NULL",
 ];
 
 export const recordVote = (id: string, place: number, delta: number) => {
   const result = db.prepare(voteUpdates[place - 1]).run(delta, id);
   if (result.changes === 0) {
-    return getSession(id) === undefined
-      ? fail("not_found")
-      : fail("no_such_place");
+    const session = getSession(id);
+    if (session === undefined) return fail("not_found");
+    if (session[`place${place}_name`] === null) return fail("no_such_place");
+    return fail("closed");
   }
+  return { ok: true as const };
+};
+
+export const setSessionOpen = (id: string, isOpen: boolean) => {
+  const result = db
+    .prepare("UPDATE vote_sessions SET is_open = ? WHERE id = ?")
+    .run(isOpen ? 1 : 0, id);
+  if (result.changes === 0) return fail("not_found");
   return { ok: true as const };
 };
