@@ -14,5 +14,5 @@ export const validateCreate = (raw: RawCreate) => {
   if (places.length < 2) errors.places = "Isi minimal 2 tempat";
 
   if (Object.keys(errors).length > 0) return { ok: false as const, errors };
-  return { ok: true, title, places };
+  return { ok: true as const, title, places };
 };
