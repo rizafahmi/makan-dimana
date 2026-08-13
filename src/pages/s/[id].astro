@@ -2,6 +2,7 @@
 import Base from "../../layouts/Base.astro";
 import { getSession, recordVote, setSessionOpen } from "../../lib/db.ts";
 import { readForm } from "../../lib/form.ts";
+import { listPlaces } from "../../lib/session.ts";
 
 const id = Astro.params.id ?? "";
 const voteActions = ["upvote", "downvote"];
@@ -10,6 +11,7 @@ const sessionActions = ["close"];
 const invalidRequest = "Permintaan tidak valid";
 
 let error: string | null = null;
+let status = 400;
 
 if (Astro.request.method === "POST") {
   const form = await readForm(Astro.request);
@@ -37,9 +39,14 @@ if (Astro.request.method === "POST") {
     if (result.ok) return Astro.redirect(`/s/${id}`, 303);
     if (result.reason === "not_found")
       return new Response(null, { status: 404 });
-    error = invalidRequest;
+    if (result.reason === "closed") {
+      error = "Sesi sudah ditutup";
+      status = 409;
+    } else {
+      error = invalidRequest;
+    }
   }
-  Astro.response.status = 400;
+  Astro.response.status = status;
 }
 
 const session = error === null ? getSession(id) : undefined;
@@ -47,22 +54,7 @@ if (error === null && session === undefined) {
   return new Response(null, { status: 404 });
 }
 const title = session === undefined ? invalidRequest : String(session.title);
-const places =
-  session === undefined
-    ? []
-    : [1, 2, 3, 4].flatMap((slot) => {
-        const name = session[`place${slot}_name`];
-        if (name === null || name === undefined) {
-          return [];
-        }
-        return [
-          {
-            slot,
-            name: String(name),
-            votes: Number(session[`place${slot}_votes`]),
-          },
-        ];
-      });
+const places = session === undefined ? [] : listPlaces(session);
 const isOpen = session !== undefined && session.is_open === 1;
 ---
 

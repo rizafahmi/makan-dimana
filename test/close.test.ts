@@ -25,3 +25,22 @@ test("closing a session hides the vote controls and is idempotent", async () => 
   assert.equal(again.status, 303);
   assert.equal(res.headers.get("location"), path);
 });
+
+test("voting on a closed session returns 409 without changing counts", async () => {
+  const path = await seedSession(server.origin);
+  await postForm(server.origin, path, { action: "upvote", place: "1" });
+  await postForm(server.origin, path, { action: "close" });
+
+  const res = await postForm(server.origin, path, {
+    action: "upvote",
+    place: "1",
+  });
+  assert.equal(res.status, 409);
+
+  const body = await res.text();
+  assert.ok(body.includes("Sesi sudah ditutup"));
+  assert.ok(body.includes(`href="${path}"`));
+
+  const html = await (await fetch(`${server.origin}${path}`)).text();
+  assert.match(html, /data-place="1"[^>]*data-votes="1"/);
+});

@@ -161,7 +161,7 @@ Pin these before writing the first test; the e2e suites hard-code them.
 
 - [x] Add close: form POST calls setSessionOpen(id, false), redirects with 303, and hides vote and close controls
       Done when: a closed session renders without vote buttons, shows the reopen control, and closing it again is an idempotent 303 and the landing list shows the closed session as Sudah ditutup with data-open="0"
-- [ ] Verify the closed-session rejection over HTTP now that close is reachable
+- [x] Verify the closed-session rejection over HTTP now that close is reachable
       Done when: an e2e test creates a session, closes it, then posts an upvote and gets 409 with the count unchanged and the Indonesian error body
 - [ ] Highlight the winner only among populated place slots on a closed session, using `data-winner` and a text label rather than color alone
       - One leader: mark that place as winner
@@ -202,3 +202,4 @@ Pin these before writing the first test; the e2e suites hard-code them.
       - Landing, new, validation-error, open-session, closed single-winner, closed tie, 404, and 500 pages have no horizontal scroll at 320px
       - Bind the server to a LAN interface with `--host` for the QR check; the QR payload comes from the request Host header, so a localhost-bound server encodes an unreachable URL
       Done when: all listed pages pass the responsive check and a phone opens the session URL from the QR
+  
