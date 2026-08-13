@@ -7,8 +7,8 @@ through `fetch` only, and a `<noscript>` says so.
 
 ## Consequences
 
-- Progressive enhancement is gone on this branch by choice, not by neglect. v1 on `main`
-  has it and works fully without JavaScript.
+- Progressive enhancement is gone on this branch by choice, not by neglect. v1 on
+  `1-naive` has it and works fully without JavaScript.
 - The vote and close forms keep the same `action` and `place` field names as v1, so
   `src/lib` and the precedence list in `PLAN.md` are untouched by the change.
 - `/new` is unaffected. It loads no data, so it stays fully server-rendered with its

@@ -3,11 +3,15 @@
 This repo is a teaching artifact, not a product. Numbered branches walk an audience
 from a cloud-first web app to a local-first one, one architectural change at a time.
 
-- `main` - v1. Server-rendered Astro, forms and redirects, zero client JavaScript.
+- `main` - the untouched `create astro` scaffold. Nothing of the app lives here.
+- `1-naive` - v1. Server-rendered Astro, forms and redirects, zero client JavaScript.
   Built to work, documented by `PLAN.md`.
-- `1-naive` - v2. The cloud-first baseline the talk actually opens with. Same app,
-  same database, but `/` and `/s/[id]` load their data over the network so the
-  dependency is visible. Documented by `docs/plan-v2.md`.
+- `2-ssr-csr` - v2, and the branch the talk actually opens with. Same app, same
+  database, but `/` and `/s/[id]` ship a shell and load their data over the network
+  so the dependency is visible. Documented by `docs/plan-v2.md`.
+
+Each branch builds on the one above it, so the diff between two adjacent branches is
+the unit the talk works in.
 
 ## Why v2 is worse than v1
 
