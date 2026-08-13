@@ -27,8 +27,11 @@ contradicted below.
   after a blank screen
 - `src/lib` splits into server-only (`db.ts`, `share.ts`) and isomorphic (`session.ts`,
   `time.ts`, `validate.ts`). Client code must never import a server-only module
-- Client code lives in `src/scripts/*.ts`, imported from a bundled `<script>` so
-  `astro check` sees it
+- Client code is a single entry, `src/scripts/app.ts`, imported from one `<script>` in
+  `Base.astro` and dispatched by which container the page rendered. One entry is what
+  keeps Astro inlining it: two page-level `<script>` entries sharing a module make Vite
+  emit external chunks, which puts two more round trips ahead of the data on a throttled
+  connection. The cost is that `/new`, `/404` and `/500` carry the same inert script
 - DOM plumbing has no automated test. Like configuration, it is manually verified
 
 ## Non-goals
@@ -74,31 +77,33 @@ Additions and changes to the table in `PLAN.md`.
 Ordered so every commit is green. The endpoints land alongside the existing pages, the
 tests move across under green, then the pages give up their data, then the old path goes.
 
-- [ ] `GET /api/sessions/[id]` returns the raw session row as JSON
+- [x] `GET /api/sessions/[id]` returns the raw session row as JSON
       Done when: a seeded session round-trips through the endpoint with its title,
       is_open, place names and vote counts, and an unused slot comes back as null
-- [ ] `GET /api/sessions/[id]` returns 404 for malformed and for valid but unknown ids
+- [x] `GET /api/sessions/[id]` returns 404 for malformed and for valid but unknown ids
       Done when: a lookalike-typo id resolves to the same session, and `/api/sessions/zzzzzzz`,
       `/api/sessions/short` and `/api/sessions/abc12!3` all return 404
-- [ ] `GET /api/sessions` returns `listSessions()` as JSON
+- [x] `GET /api/sessions` returns `listSessions()` as JSON
       Done when: an empty database returns an empty array and seeded sessions come back
       newest first with the same ordering the landing list used
-- [ ] `POST /api/sessions/[id]` applies the precedence list and returns the updated session
+- [x] `POST /api/sessions/[id]` applies the precedence list and returns the updated session
       Done when: an upvote returns the incremented row, a downvote at 0 clamps, a vote on
       a closed session is 409, an empty slot is 400, `place=02` and `action=bogus` are 400,
       close and reopen are idempotent, and a non-form body is 400
-- [ ] Refactor under green: move the vote, close and landing assertions off HTML onto the
+- [x] Refactor under green: move the vote, close and landing assertions off HTML onto the
       endpoints. No production change
-- [ ] `/s/[id]` ships a data-free shell and renders from the endpoint
+- [x] `/s/[id]` ships a data-free shell and renders from the endpoint
       Done when: the page no longer contains any place name, does contain
       `data-state="loading"` and `Memuat...`, and a malformed id still 404s from the page
-- [ ] `/` ships a data-free shell and renders the session list from the endpoint
+- [x] `/` ships a data-free shell and renders the session list from the endpoint
       Done when: the page no longer contains any session title and does contain the
       loading hook, and the empty state still appears once the list has loaded
-- [ ] Delete the form POST handling from `[id].astro` and its now-redundant tests
+- [x] Delete the form POST handling from `[id].astro` and its now-redundant tests
       Done when: `pnpm test` is green with one mutation path in the codebase
 
 ## Manual checks
+
+All performed in headless Chrome against the production build on 2026-08-13.
 
 - Throttle to Slow 3G and confirm the loading state appears on `/` and `/s/[id]` before
   the data does, and that a vote shows a pending state

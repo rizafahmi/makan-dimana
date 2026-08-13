@@ -9,7 +9,7 @@ Read this section before taking any action.
 * Never create, edit, move, rename, or delete project files. Show me every proposed edit in the chat so I can type it in manually.
 * Never run commands that modify files, install dependencies, or change repository state. Show me the command so I can run it myself.
 * I'm an experienced developer. Do not explain syntax, APIs, programming concepts, or implementation details unless I ask.
-* Routes that load data render their shell on the server and fetch data from the client. Routes with no data to load stay fully server-rendered: `/new`, `/404`, `/500`. `/` and `/s/[id]` are not.
+* Routes that load data render their shell on the server and fetch data from the client: `/` and `/s/[id]`. Routes with no data to load stay fully server-rendered: `/new`, `/404`, `/500` - they still carry the shared client entry, which does nothing there.
 * The app requires JavaScript. A deliberate trade on this branch, to make loading state visible.
 * Client rendering builds DOM with `createElement` and `textContent`. Never pass user-supplied text through `innerHTML`.
 * `src/lib/db.ts` and `src/lib/share.ts` are server-only. `session.ts`, `time.ts` and `validate.ts` are isomorphic. Client code must never import a server-only module.
@@ -96,6 +96,7 @@ An unused optional place slot is NULL, never `''`. Every guard that skips, block
 * `src/pages/` - routes. `/` is the landing page and public session list, `/new` creates a session, `/s/[id]` votes and shows the winner.
 * `src/lib/` - domain logic, so closed-session and missing-slot behavior is unit-testable before the routes that expose it exist. Pages stay thin wrappers that map results to status codes.
 * `src/layouts/Base.astro` and `src/styles/global.css` - the shared shell and the single stylesheet. Every page uses them from its first commit.
+* `src/scripts/app.ts` - the only client entry, loaded from `Base.astro`. It renders `/` and `/s/[id]` from the JSON endpoints and owns every loading, error and empty state.
 * `data/makan.db` - the local SQLite file. Gitignored, created on first import.
 * `README.md` - project overview and commands for humans. `AGENTS.md` wins on any conflict.
 * Astro docs: [routing and middleware](https://docs.astro.build/en/guides/routing/), [components](https://docs.astro.build/en/basics/astro-components/). Full docs: https://docs.astro.build
