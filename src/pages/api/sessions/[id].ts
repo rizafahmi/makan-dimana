@@ -1,10 +1,6 @@
 import type { APIRoute } from "astro";
-import {
-  getSession,
-  normalizeSessionId,
-  recordVote,
-  setSessionOpen,
-} from "../../../lib/db.ts";
+import { getSession, recordVote, setSessionOpen } from "../../../lib/db.ts";
+import { normalizeSessionId } from "../../../lib/id.ts";
 import { readForm } from "../../../lib/form.ts";
 
 const voteActions = ["upvote", "downvote"];

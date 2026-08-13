@@ -1,6 +1,6 @@
 ---
 import Base from "../../layouts/Base.astro";
-import { normalizeSessionId } from "../../lib/db.ts";
+import { normalizeSessionId } from "../../lib/id.ts";
 import { qrSvg } from "../../lib/share.ts";
 
 const canonicalId = normalizeSessionId(Astro.params.id ?? "");

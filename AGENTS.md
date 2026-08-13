@@ -12,7 +12,7 @@ Read this section before taking any action.
 * Routes that load data render their shell on the server and fetch data from the client: `/` and `/s/[id]`. Routes with no data to load stay fully server-rendered: `/new`, `/404`, `/500` - they still carry the shared client entry, which does nothing there.
 * The app requires JavaScript. A deliberate trade on this branch, to make loading state visible.
 * Client rendering builds DOM with `createElement` and `textContent`. Never pass user-supplied text through `innerHTML`.
-* `src/lib/db.ts` and `src/lib/share.ts` are server-only. `session.ts`, `time.ts` and `validate.ts` are isomorphic. Client code must never import a server-only module.
+* `src/lib/db.ts` and `src/lib/share.ts` are server-only. `id.ts`, `session.ts`, `time.ts` and `validate.ts` are isomorphic. Client code must never import a server-only module.
 * Avoid third-party dependencies. Prefer `node:` builtins and Astro's own APIs. Adding any dependency needs my approval first.
 * pnpm is the only package manager here. Never run `npm install` or `yarn` - a stray npm install prunes pnpm's tree and desyncs the lockfile.
 * Pin exact versions. `pnpm-workspace.yaml` sets `saveExact: true`, so plain `pnpm add <pkg>` already writes an exact version; no flag to remember.

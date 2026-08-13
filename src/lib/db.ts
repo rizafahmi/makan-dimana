@@ -2,6 +2,7 @@ import { mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { randomBytes } from "node:crypto";
+import { alphabet, normalizeSessionId } from "./id.ts";
 
 const file = resolve(process.env.MAKAN_DB ?? "data/makan.db");
 
@@ -42,9 +43,6 @@ const store = globalThis as typeof globalThis & { makanDb?: DatabaseSync };
 
 export const db = (store.makanDb ??= open());
 
-const alphabet = "0123456789abcdefghjkmnpqrstvwxyz";
-const canonicalId = new RegExp(`^[${alphabet}]{7}$`);
-
 const defaultGenerateId = () => {
   let id = "";
   for (const byte of randomBytes(7)) id += alphabet[byte % 32];
@@ -81,14 +79,6 @@ export const createSession = (
   }
 };
 
-export const normalizeSessionId = (raw: string) => {
-  const id = raw
-    .toLowerCase()
-    .replaceAll("i", "1")
-    .replaceAll("l", "1")
-    .replaceAll("o", "0");
-  return canonicalId.test(id) ? id : null;
-};
 export const getSession = (id: string) => {
   const normalized = normalizeSessionId(id);
   if (normalized === null) return undefined;

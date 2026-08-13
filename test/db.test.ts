@@ -222,7 +222,7 @@ test("getSession finds a session through a lookalike-typo id", async () => {
 });
 
 test("normalizeSessionId canonicalizes valid ids and rejects malformed ones", async () => {
-  const { normalizeSessionId } = await import("../src/lib/db.ts");
+  const { normalizeSessionId } = await import("../src/lib/id.ts");
 
   assert.equal(normalizeSessionId("ABCl2Ox"), "abc120x");
   assert.equal(normalizeSessionId("abc12qx"), "abc12qx");
