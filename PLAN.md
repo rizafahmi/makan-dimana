@@ -192,13 +192,13 @@ Pin these before writing the first test; the e2e suites hard-code them.
 
 ### 6. Final verification
 
-- [ ] Run `pnpm test`
+- [x] Run `pnpm test`
       Done when: `astro check` reports zero errors, the build succeeds, and all node:test suites pass
-- [ ] Verify a clean checkout boots
+- [x] Verify a clean checkout boots
       - `data/` is gitignored, so a fresh clone has no database at all
       - Confirm the db module creates the directory and the schema on first import, and that no -wal or -shm sidecar appears
       Done when: deleting data/, then starting the production build, creates a working empty database and serves the landing page
-- [ ] Perform the manual checks
+- [x] Perform the manual checks
       - Landing, new, validation-error, open-session, closed single-winner, closed tie, 404, and 500 pages have no horizontal scroll at 320px
       - Bind the server to a LAN interface with `--host` for the QR check; the QR payload comes from the request Host header, so a localhost-bound server encodes an unreachable URL
       Done when: all listed pages pass the responsive check and a phone opens the session URL from the QR

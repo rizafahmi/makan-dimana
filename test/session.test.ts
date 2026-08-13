@@ -24,3 +24,31 @@ test("winningSlots marks leaders only when votes are positive", () => {
   const emptySlotAhead = listPlaces(row({ place3_votes: 9 }));
   assert.deepEqual(winningSlots(emptySlotAhead), []);
 });
+
+test("listPlaces orders by votes, with ties keeping slot order", () => {
+  const ranked = listPlaces(
+    row({
+      place1_votes: 1,
+      place2_votes: 5,
+      place3_name: "Sate",
+      place3_votes: 3,
+    }),
+  );
+
+  assert.deepEqual(
+    ranked.map((place) => place.slot),
+    [2, 3, 1],
+  );
+  const tied = listPlaces(
+    row({
+      place1_votes: 2,
+      place2_votes: 2,
+      place3_name: "Sate",
+      place3_votes: 2,
+    }),
+  );
+  assert.deepEqual(
+    tied.map((place) => place.slot),
+    [1, 2, 3],
+  );
+});
