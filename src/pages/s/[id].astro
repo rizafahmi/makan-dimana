@@ -2,7 +2,7 @@
 import Base from "../../layouts/Base.astro";
 import { getSession, recordVote, setSessionOpen } from "../../lib/db.ts";
 import { readForm } from "../../lib/form.ts";
-import { listPlaces } from "../../lib/session.ts";
+import { listPlaces, winningSlots } from "../../lib/session.ts";
 
 const id = Astro.params.id ?? "";
 const voteActions = ["upvote", "downvote"];
@@ -56,6 +56,7 @@ if (error === null && session === undefined) {
 const title = session === undefined ? invalidRequest : String(session.title);
 const places = session === undefined ? [] : listPlaces(session);
 const isOpen = session !== undefined && session.is_open === 1;
+const winners = isOpen ? [] : winningSlots(places);
 ---
 
 <Base title={title}>
@@ -65,8 +66,13 @@ const isOpen = session !== undefined && session.is_open === 1;
         <h1>{title}</h1>
         <ul>
           {places.map((place) => (
-            <li data-place={place.slot} data-votes={place.votes}>
+            <li
+              data-place={place.slot}
+              data-votes={place.votes}
+              data-winner={winners.includes(place.slot) ? "true" : undefined}
+            >
               {place.name}: {place.votes} suara{" "}
+              {winners.includes(place.slot) && <strong>Pemenang</strong>}
               {isOpen && (
                 <form method="post">
                   <input type="hidden" name="place" value={place.slot} />
@@ -81,6 +87,9 @@ const isOpen = session !== undefined && session.is_open === 1;
             </li>
           ))}
         </ul>
+        {!isOpen && winners.length === 0 && <p>Belum ada pemenang</p>}
+        {!isOpen && winners.length > 1 && <p>Seri!</p>}
+
         {isOpen ? (
           <form method="post">
             <button name="action" value="close">

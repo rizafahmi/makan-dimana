@@ -163,7 +163,7 @@ Pin these before writing the first test; the e2e suites hard-code them.
       Done when: a closed session renders without vote buttons, shows the reopen control, and closing it again is an idempotent 303 and the landing list shows the closed session as Sudah ditutup with data-open="0"
 - [x] Verify the closed-session rejection over HTTP now that close is reachable
       Done when: an e2e test creates a session, closes it, then posts an upvote and gets 409 with the count unchanged and the Indonesian error body
-- [ ] Highlight the winner only among populated place slots on a closed session, using `data-winner` and a text label rather than color alone
+- [x] Highlight the winner only among populated place slots on a closed session, using `data-winner` and a text label rather than color alone
       - One leader: mark that place as winner
       - Positive tie: mark every tied leader and show `Seri!`
       - All zero: mark no winner and show `Belum ada pemenang`
