@@ -77,3 +77,18 @@ export const postForm = (
     body: new URLSearchParams(fields),
     redirect: "manual",
   });
+
+export const seedSession = async (
+  origin: string,
+  fields: Record<string, string> = {},
+) => {
+  const res = await postForm(origin, "/new", {
+    title: "Sesi uji",
+    place1: "Warteg",
+    place2: "Padang",
+    place3: "",
+    place4: "",
+    ...fields,
+  });
+  return String(res.headers.get("location"));
+};

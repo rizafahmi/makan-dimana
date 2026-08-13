@@ -1,8 +1,20 @@
 ---
 import Base from "../../layouts/Base.astro";
-import { getSession } from "../../lib/db.ts";
+import { getSession, recordVote } from "../../lib/db.ts";
 
-const session = getSession(Astro.params.id ?? "");
+const id = Astro.params.id ?? "";
+
+if (Astro.request.method === "POST") {
+  const form = await Astro.request.formData();
+  const delta = form.get("action") === "downvote" ? -1 : 1;
+  const result = recordVote(id, Number(form.get("place")), delta);
+  if (!result.ok) {
+    return new Response(null, { status: 400 });
+  }
+  return Astro.redirect(`/s/${id}`, 303);
+}
+
+const session = getSession(id);
 if (session === undefined) {
   return new Response(null, { status: 404 });
 }

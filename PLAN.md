@@ -149,7 +149,7 @@ Pin these before writing the first test; the e2e suites hard-code them.
 
 - [x] Add `recordVote(id, place, delta)` and `setSessionOpen(id, isOpen)` to `src/lib`, each as one conditional SQL UPDATE. recordVote increments or decrements only the mapped column, requires `is_open = 1` and a non-null place name, and clamps downvotes with MAX(0, votes - 1)
       Done when: unit tests written first cover incrementing exactly one present place, clamping a 0-vote place at 0, `reason: 'no_such_place'` for an empty slot, `reason: 'closed'` after setSessionOpen(id, false), and `reason: 'not_found'` for an unknown id - all provable before any close route exists
-- [ ] Wire upvote and downvote on /s/[id] to recordVote and map results to status codes
+- [x] Wire upvote and downvote on /s/[id] to recordVote and map results to status codes
       Done when: an e2e upvote increments one place and survives a refresh, a downvote at 0 stays at 0, an empty place slot returns 400, and neither changes any other count
 - [ ] Reject malformed mutation requests on /s/[id] before touching the database, following the precedence list above
       Done when: a POST with no `action` returns 400, `action=bogus` returns 400, a vote with no `place` returns 400, `place=02` and `place=5` return 400, none of them change any count, and each response body carries the Indonesian error message and a link back to the session

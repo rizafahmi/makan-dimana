@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
-import { startServer, postForm } from "./harness.ts";
+import { startServer, seedSession, postForm } from "./harness.ts";
 
 let server: Awaited<ReturnType<typeof startServer>>;
 
@@ -22,20 +22,9 @@ test("a fresh database shows the empty state and a link to /new", async () => {
   assert.ok(html.includes("Belum ada sesi"));
 });
 
-const create = async (title: string) => {
-  const res = await postForm(server.origin, "/new", {
-    title,
-    place1: "Warteg",
-    place2: "Padang",
-    place3: "",
-    place4: "",
-  });
-  return String(res.headers.get("location"));
-};
-
 test("created sessions appear on the landing list newest first with open state", async () => {
-  const first = await create("Sesi pertama");
-  const second = await create("Sesi kedua");
+  const first = await seedSession(server.origin, { title: "Sesi pertama" });
+  const second = await seedSession(server.origin, { title: "Sesi kedua" });
 
   const html = await (await fetch(server.origin)).text();
 
