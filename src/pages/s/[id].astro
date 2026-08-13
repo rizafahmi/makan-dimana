@@ -61,7 +61,7 @@ const session = error === null ? getSession(id) : undefined;
 if (error === null && session === undefined) {
   return new Response(null, { status: 404 });
 }
-const title = session === undefined ? invalidRequest : String(session.title);
+const title = error ?? String(session?.title ?? "");
 const places = session === undefined ? [] : listPlaces(session);
 const isOpen = session !== undefined && session.is_open === 1;
 const winners = isOpen ? [] : winningSlots(places);

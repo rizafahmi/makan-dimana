@@ -181,13 +181,13 @@ Pin these before writing the first test; the e2e suites hard-code them.
       Show the canonical share URL as text and give the QR an accessible Indonesian label
       If QR generation fails, the detail page still renders the text share URL
       Done when: the encoded QR value equals the canonical absolute URL and the text URL remains available even when generation throws
-- [ ] Implement custom Indonesian 404 and 500 pages
+- [x] Implement custom Indonesian 404 and 500 pages
       - 404 heading: `Nyasar, ya?`, with a link back to the landing page
       - 500 heading: `Dapurnya lagi meledug`, with retry and landing-page links
       Done when: an unknown URL renders status 404 with custom content in a production build
       Done when: a temporary controlled SSR throw returns status 500 with custom content in a production build; remove the temporary throw before completing the step
       Note: 500.astro only renders in a production build, not dev
-- [ ] Fill in the shared shell: descriptive per-page titles, visible labels on every form control, validation errors associated with their fields, winner state never conveyed by color alone, and visible keyboard focus on interactive controls
+- [x] Fill in the shared shell: descriptive per-page titles, visible labels on every form control, validation errors associated with their fields, winner state never conveyed by color alone, and visible keyboard focus on interactive controls
       Done when: every page has a distinct `<title>`, each input has a `<label for>`, and each 422 field error is referenced by its input's `aria-describedby`
 
 ### 6. Final verification

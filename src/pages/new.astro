@@ -33,16 +33,56 @@ if (Astro.request.method === "POST") {
 <Base title="Bikin sesi baru">
   <h1>Bikin sesi baru</h1>
   <form method="post">
-    <input name="title" value={values.title} />
-    {errors.title && <p>{errors.title}</p>}
-    <input name="place1" value={values.place1} />
-    {errors.place1 && <p>{errors.place1}</p>}
-    <input name="place2" value={values.place2} />
-    {errors.place2 && <p>{errors.place2}</p>}
-    <input name="place3" value={values.place3} />
-    {errors.place3 && <p>{errors.place3}</p>}
-    <input name="place4" value={values.place4} />
-    {errors.place4 && <p>{errors.place4}</p>}
+    <p>
+      <label for="title">Judul</label>
+      <input
+        name="title"
+        id="title"
+        value={values.title}
+        aria-describedby={errors.title ? "title-error" : undefined}
+      />
+      {errors.title && <span id="title-error">{errors.title}</span>}
+    </p>
+    <p>
+      <label for="place1">Tempat 1</label>
+      <input
+        name="place1"
+        id="place1"
+        value={values.place1}
+        aria-describedby={errors.place1 ? "place1-error" : undefined}
+      />
+      {errors.place1 && <span id="place1-error">{errors.place1}</span>}
+    </p>
+    <p>
+      <label for="place2">Tempat 2</label>
+      <input
+        name="place2"
+        id="place2"
+        value={values.place2}
+        aria-describedby={errors.place2 ? "place2-error" : undefined}
+      />
+      {errors.place2 && <span id="place3-error">{errors.place2}</span>}
+    </p>
+    <p>
+      <label for="place3">Tempat 3</label>
+      <input
+        name="place3"
+        id="place3"
+        value={values.place3}
+        aria-describedby={errors.place3 ? "place3-error" : undefined}
+      />
+      {errors.place3 && <span id="place3-error">{errors.place3}</span>}
+    </p>
+    <p>
+      <label for="place4">Tempat 4</label>
+      <input
+        name="place4"
+        id="place4"
+        value={values.place4}
+        aria-describedby={errors.place4 ? "place4-erroor" : undefined}
+      />
+      {errors.place4 && <span id="place4-error">{errors.place4}</span>}
+    </p>
     {errors.places && <p>{errors.places}</p>}
     <button>Bikin sesi</button>
   </form>

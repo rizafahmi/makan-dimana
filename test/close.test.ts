@@ -92,3 +92,15 @@ test("reopening restores voting, hides the winner, and is idempotent", async () 
   const again = await postForm(server.origin, path, { action: "reopen" });
   assert.equal(again.status, 303);
 });
+
+test("an error response titles itself by its message", async () => {
+  const path = await seedSession(server.origin);
+  await postForm(server.origin, path, { action: "close" });
+  const res = await postForm(server.origin, path, {
+    action: "upvote",
+    place: "1",
+  });
+  assert.equal(res.status, 409);
+  const html = await res.text();
+  assert.match(html, /<title>Sesi sudah ditutup<\/title>/);
+});

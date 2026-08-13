@@ -86,3 +86,31 @@ test("invalid create input returns 422 with errors and submitted values preserve
   assert.ok(html.includes("Isi minimal 2 tempat"));
   assert.ok(html.includes('value="Warteg Bahari"'));
 });
+
+test("the create form labels every control and links its errors", async () => {
+  const html = await (await fetch(`${server.origin}/new`)).text();
+
+  for (const name of ["title", "place1", "place2", "place3", "place4"]) {
+    assert.match(
+      html,
+      new RegExp(`<label for="${name}">`),
+      `label for ${name}`,
+    );
+    assert.match(html, new RegExp(`<input[^>]*id="${name}"`), `id on ${name}`);
+  }
+  const res = await postForm(server.origin, "/new", {
+    title: "",
+    place1: "Warteg",
+    place2: "",
+    place3: "",
+    place4: "",
+  });
+  assert.equal(res.status, 422);
+
+  const invalid = await res.text();
+  assert.match(
+    invalid,
+    /<input[^>]*id="title"[^>]*aria-describedby="title-error"/,
+  );
+  assert.match(invalid, /id="title-error"/);
+});
