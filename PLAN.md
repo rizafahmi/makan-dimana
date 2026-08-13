@@ -139,7 +139,7 @@ Pin these before writing the first test; the e2e suites hard-code them.
 - [x] Validate the create form: trim title and all place names; title required and max 100 chars; each non-empty place max 60 chars; require 2-4 non-empty places; compact accepted places into sequential database slots
       Return 422 and re-render errors with the original submitted fields preserved
       Done when: submitting 1 place writes no row; whitespace-only places do not count; inputs in slots 2 and 4 are stored as place1 and place2; duplicate names are accepted; and the 422 body contains both the field error messages and the previously submitted title and place values
-- [ ] Implement landing page: link to /new, empty state, and public sessions list ordered by `created_at DESC, rowid DESC` with `LIMIT 20`, with open/closed state visible
+- [x] Implement landing page: link to /new, empty state, and public sessions list ordered by `created_at DESC, rowid DESC` with `LIMIT 20`, with open/closed state visible
       Done when: a fresh db shows the empty state, the rendered list shows each session's open or closed state, a 21st session pushes the oldest off the list while staying reachable by link, and a unit test on the query - seeding rows with identical `created_at` values directly - asserts deterministic newest-first order without depending on wall-clock timing
 - [x] Add an Indonesian relative-time formatter to `src/lib` and show each listed session's age with it
       It takes two UTC instants and returns `baru saja`, `N menit lalu`, `N jam lalu`, `kemarin`, or `N hari lalu`. No timezone conversion and no `Intl` locale data
@@ -159,7 +159,7 @@ Pin these before writing the first test; the e2e suites hard-code them.
 
 ### 4. Closing and winner
 
-- [ ] Add close: form POST calls setSessionOpen(id, false), redirects with 303, and hides vote and close controls
+- [x] Add close: form POST calls setSessionOpen(id, false), redirects with 303, and hides vote and close controls
       Done when: a closed session renders without vote buttons, shows the reopen control, and closing it again is an idempotent 303 and the landing list shows the closed session as Sudah ditutup with data-open="0"
 - [ ] Verify the closed-session rejection over HTTP now that close is reachable
       Done when: an e2e test creates a session, closes it, then posts an upvote and gets 409 with the count unchanged and the Indonesian error body

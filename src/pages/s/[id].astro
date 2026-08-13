@@ -1,11 +1,12 @@
 ---
 import Base from "../../layouts/Base.astro";
-import { getSession, recordVote } from "../../lib/db.ts";
+import { getSession, recordVote, setSessionOpen } from "../../lib/db.ts";
 import { readForm } from "../../lib/form.ts";
 
 const id = Astro.params.id ?? "";
-const allowedActions = ["upvote", "downvote"];
+const voteActions = ["upvote", "downvote"];
 const allowedPlaces = ["1", "2", "3", "4"];
+const sessionActions = ["close"];
 const invalidRequest = "Permintaan tidak valid";
 
 let error: string | null = null;
@@ -16,8 +17,15 @@ if (Astro.request.method === "POST") {
   const action = form.get("action");
   const place = form.get("place");
 
-  if (typeof action !== "string" || !allowedActions.includes(action)) {
+  if (
+    typeof action !== "string" ||
+    (!voteActions.includes(action) && !sessionActions.includes(action))
+  ) {
     error = invalidRequest;
+  } else if (sessionActions.includes(action)) {
+    const result = setSessionOpen(id, false);
+    if (result.ok) return Astro.redirect(`/s/${id}`, 303);
+    return new Response(null, { status: 404 });
   } else if (typeof place !== "string" || !allowedPlaces.includes(place)) {
     error = invalidRequest;
   } else {
@@ -55,6 +63,7 @@ const places =
           },
         ];
       });
+const isOpen = session !== undefined && session.is_open === 1;
 ---
 
 <Base title={title}>
@@ -65,10 +74,34 @@ const places =
         <ul>
           {places.map((place) => (
             <li data-place={place.slot} data-votes={place.votes}>
-              {place.name}: {place.votes} suara
+              {place.name}: {place.votes} suara{" "}
+              {isOpen && (
+                <form method="post">
+                  <input type="hidden" name="place" value={place.slot} />
+                  <button name="action" value="upvote">
+                    Naik
+                  </button>{" "}
+                  <button name="action" value="downvote">
+                    Turun
+                  </button>
+                </form>
+              )}
             </li>
           ))}
         </ul>
+        {isOpen ? (
+          <form method="post">
+            <button name="action" value="close">
+              Tutup sesi
+            </button>
+          </form>
+        ) : (
+          <form method="post">
+            <button name="action" value="reopen">
+              Buka lagi
+            </button>
+          </form>
+        )}
       </>
     ) : (
       <>

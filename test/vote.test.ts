@@ -93,3 +93,15 @@ test("mutations on malformed and unknown session ids return 404", async () => {
     assert.equal(res.status, 404, `id ${id} gave ${res.status}`);
   }
 });
+
+test("detail page renders vote controls for each place", async () => {
+  const path = await seedSession(server.origin);
+  const html = await (await fetch(`${server.origin}${path}`)).text();
+
+  assert.match(html, /<form[^>]*method="post"/i);
+  assert.match(html, /<input[^>]*name="place"[^>]*value="1"/);
+  assert.match(html, /<input[^>]*name="place"[^>]*value="2"/);
+  assert.equal(/<input[^>]*name="place"[^>]*value="3"/.test(html), false);
+  assert.match(html, /name="action"[^>]*value="upvote"/);
+  assert.match(html, /name="action"[^>]*value="downvote"/);
+});

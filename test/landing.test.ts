@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
-import { startServer, seedSession } from "./harness.ts";
+import { postForm, startServer, seedSession } from "./harness.ts";
 
 let server: Awaited<ReturnType<typeof startServer>>;
 
@@ -38,4 +38,13 @@ test("created sessions appear on the landing list newest first with open state",
 test("each listed session shows its Indonesian relative age", async () => {
   const html = await (await fetch(server.origin)).text();
   assert.match(html, /baru saja/);
+});
+
+test("a closed session in labelled as closed on the landing list", async () => {
+  const path = await seedSession(server.origin, { title: "Sesi ditutup" });
+  await postForm(server.origin, path, { action: "close" });
+  const html = await (await fetch(server.origin)).text();
+
+  assert.match(html, /data-open="0"[^>]*>Sudah ditutup/);
+  assert.match(html, /data-open="1"[^>]*>Masih buka/);
 });

@@ -21,7 +21,9 @@ const age = (createdAt: unknown) =>
           <li>
             <>
               <a href={`/s/${session.id}`}>{session.title}</a>
-              <span data-open={session.is_open}>Masih buka</span>
+              <span data-open={session.is_open}>
+                {session.is_open === 1 ? "Masih buka" : "Sudah ditutup"}
+              </span>
               <span>{age(session.created_at)}</span>
             </>
           </li>
