@@ -12,7 +12,7 @@ after(async () => {
   await server.stop();
 });
 
-test("creating a session redirects to a detail page showing its title", async () => {
+test("creating a session redirects to a detail page for the new session", async () => {
   const res = await postForm(server.origin, "/new", {
     title: "Makan siang tim",
     place1: "Warteg",

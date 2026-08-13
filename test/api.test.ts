@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
-import { postForm, seedSession, startServer } from "./harness.ts";
+import {
+  postForm,
+  readSession,
+  readSessions,
+  seedSession,
+  sessionId,
+  startServer,
+} from "./harness.ts";
 
 let server: Awaited<ReturnType<typeof startServer>>;
 
@@ -16,12 +23,12 @@ test("GET /api/sessions returns an empty array for a fresh database", async () =
   const res = await fetch(`${server.origin}/api/sessions`);
   assert.equal(res.status, 200);
   assert.match(String(res.headers.get("content-type")), /application\/json/);
-  assert.deepEqual(await res.json(), []);
+  assert.deepEqual(await readSessions(server.origin), []);
 });
 
 test("GET /api/sessions/[id] returns the session row as JSON", async () => {
   const path = await seedSession(server.origin, { title: "Sesi API" });
-  const id = path.split("/").pop();
+  const id = sessionId(path);
 
   const res = await fetch(`${server.origin}/api/sessions/${id}`);
   assert.equal(res.status, 200);
@@ -39,7 +46,7 @@ test("GET /api/sessions/[id] returns the session row as JSON", async () => {
 
 test("GET /api/sessions/[id] resolves a lookalike-typo id", async () => {
   const path = await seedSession(server.origin, { title: "Sesi mirip" });
-  const id = String(path.split("/").pop());
+  const id = sessionId(path);
   const typo = id.replaceAll("1", "l").replaceAll("0", "O").toUpperCase();
 
   const res = await fetch(`${server.origin}/api/sessions/${typo}`);
@@ -58,7 +65,7 @@ test("GET /api/sessions returns seeded sessions newest first", async () => {
   await seedSession(server.origin, { title: "Sesi lama" });
   await seedSession(server.origin, { title: "Sesi baru" });
 
-  const body = await (await fetch(`${server.origin}/api/sessions`)).json();
+  const body = await readSessions(server.origin);
   const titles = body.map((session: { title: string }) => session.title);
 
   assert.ok(titles.indexOf("Sesi baru") < titles.indexOf("Sesi lama"));
@@ -66,16 +73,13 @@ test("GET /api/sessions returns seeded sessions newest first", async () => {
   assert.ok(typeof body[0].created_at === "string");
 });
 
-const seedId = async (title: string) => {
-  const path = await seedSession(server.origin, { title });
-  return String(path.split("/").pop());
-};
+const seedId = async (title: string) =>
+  sessionId(await seedSession(server.origin, { title }));
 
 const mutate = (id: string, fields: Record<string, string>) =>
   postForm(server.origin, `/api/sessions/${id}`, fields);
 
-const read = async (id: string) =>
-  await (await fetch(`${server.origin}/api/sessions/${id}`)).json();
+const read = (id: string) => readSession(server.origin, id);
 
 test("POST /api/sessions/[id] upvote returns the incremented session", async () => {
   const id = await seedId("Sesi vote");
@@ -178,7 +182,7 @@ test("GET /api/sessions reports open and closed state", async () => {
   const id = await seedId("Sesi status");
   await mutate(id, { action: "close" });
 
-  const body = await (await fetch(`${server.origin}/api/sessions`)).json();
+  const body = await readSessions(server.origin);
   const row = body.find((session: { id: string }) => session.id === id);
 
   assert.equal(row.is_open, 0);
