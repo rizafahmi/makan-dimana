@@ -2,12 +2,14 @@
 import Base from "../layouts/Base.astro";
 import { createSession } from "../lib/db.ts";
 import { validateCreate } from "../lib/validate.ts";
+import { readForm } from "../lib/form.ts";
 
 let errors: Record<string, string> = {};
 let values = { title: "", place1: "", place2: "", place3: "", place4: "" };
 
 if (Astro.request.method === "POST") {
-  const form = await Astro.request.formData();
+  const form = await readForm(Astro.request);
+  if (form === null) return new Response(null, { status: 400 });
   values = {
     title: String(form.get("title") ?? ""),
     place1: String(form.get("place1") ?? ""),

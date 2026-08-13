@@ -153,8 +153,9 @@ Pin these before writing the first test; the e2e suites hard-code them.
       Done when: an e2e upvote increments one place and survives a refresh, a downvote at 0 stays at 0, an empty place slot returns 400, and neither changes any other count
 - [x] Reject malformed mutation requests on /s/[id] before touching the database, following the precedence list above
       Done when: a POST with no `action` returns 400, `action=bogus` returns 400, a vote with no `place` returns 400, `place=02` and `place=5` return 400, none of them change any count, and each response body carries the Indonesian error message and a link back to the session
-- [ ] Guard `Astro.request.formData()` on every POST endpoint (/new and /s/[id]) so a non-form, unparseable, or oversized POST body returns 400 instead of an unhandled 500
+- [x] Guard `Astro.request.formData()` on every POST endpoint (/new and /s/[id]) so a non-form, unparseable, or oversized POST body returns 400 instead of an unhandled 500
       Done when: a POST with `content-type: application/json` and a garbage body returns 400 on both /new and /s/[id], a body over `bodySizeLimit` returns 400, and neither changes any count
+      Note: the oversize path is covered by the same guard as non-form path
 
 ### 4. Closing and winner
 
