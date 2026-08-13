@@ -1,4 +1,7 @@
 import { listPlaces, winningSlots } from "../lib/session.ts";
+import { relativeTime } from "../lib/time.ts";
+
+type Row = { id: string; title: string; is_open: number; created_at: string };
 
 const el = (tag: string, text?: string) => {
   const node = document.createElement(tag);
@@ -110,6 +113,53 @@ const mountSession = (root: HTMLElement) => {
   void load();
 };
 
+const mountLanding = (root: HTMLElement) => {
+  const render = (sessions: Row[]) => {
+    clear(root);
+    root.dataset.state = "ready";
+
+    if (sessions.length === 0) {
+      root.append(el("p", "Belum ada sesi."));
+      return;
+    }
+
+    const now = new Date();
+    const list = el("ul");
+
+    for (const session of sessions) {
+      const item = el("li");
+      const link = el("a", session.title) as HTMLAnchorElement;
+      link.href = `/s/${session.id}`;
+
+      const state = el(
+        "span",
+        session.is_open === 1 ? "Masih buka" : "Sudah ditutup",
+      );
+      state.dataset.open = String(session.is_open);
+
+      const created = new Date(`${session.created_at.replace(" ", "T")}Z`);
+      item.append(link, state, el("span", relativeTime(created, now)));
+      list.append(item);
+    }
+    root.append(list);
+  };
+
+  const load = async () => {
+    root.dataset.state = "loading";
+    try {
+      const res = await fetch("/api/sessions");
+      if (!res.ok) return failure(root, () => void load());
+      render(await res.json());
+    } catch {
+      failure(root, () => void load());
+    }
+  };
+
+  void load();
+};
+
 const session = document.querySelector<HTMLElement>("[data-session]");
+const sessions = document.querySelector<HTMLElement>("[data-sessions]");
 
 if (session) mountSession(session);
+if (sessions) mountLanding(sessions);

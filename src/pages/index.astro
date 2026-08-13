@@ -1,33 +1,12 @@
 ---
 import Base from "../layouts/Base.astro";
-import { listSessions } from "../lib/db.ts";
-import { relativeTime } from "../lib/time.ts";
-
-const sessions = listSessions();
-
-const now = new Date();
-const age = (createdAt: unknown) =>
-  relativeTime(new Date(`${String(createdAt).replace(" ", "T")}Z`), now);
 ---
 
 <Base title="Makan Dimana">
   <h1>Makan Dimana</h1>
   <a href="/new">Bikin sesi vote baru</a>
-  {sessions.length === 0 && <p>Belum ada sesi.</p>}
-  <ul>
-    {
-      sessions.length > 0 &&
-        sessions.map((session) => (
-          <li>
-            <>
-              <a href={`/s/${session.id}`}>{session.title}</a>
-              <span data-open={session.is_open}>
-                {session.is_open === 1 ? "Masih buka" : "Sudah ditutup"}
-              </span>
-              <span>{age(session.created_at)}</span>
-            </>
-          </li>
-        ))
-    }
-  </ul>
+  <div data-sessions="true" data-state="loading" role="status">
+    <p>Memuat...</p>
+  </div>
+  <noscript>Halaman ini butuh JavaScript untuk menampilkan daftar sesi.</noscript>
 </Base>

@@ -6,6 +6,8 @@ let server: Awaited<ReturnType<typeof startServer>>;
 
 const sessionShell =
   /<div data-session="true" data-id="[0-9a-z]{7}" data-state="loading" role="status"><p>Memuat\.\.\.<\/p><\/div>/;
+const landingShell =
+  /<div data-sessions="true" data-state="loading" role="status"><p>Memuat\.\.\.<\/p><\/div>/;
 
 before(async () => {
   server = await startServer();
@@ -36,5 +38,16 @@ test("/s/[id] serves a valid unknown id as a shell and 404s a malformed one", as
     const res = await fetch(`${server.origin}/s/${id}`);
     assert.equal(res.status, 404, `id ${id} gave ${res.status}`);
   }
+});
+
+test("/ ships a loading shell carrying no session data", async () => {
+  await seedSession(server.origin, { title: "Judul rahasia" });
+  const html = await (await fetch(server.origin)).text();
+
+  assert.equal(html.includes("Judul rahasia"), false);
+
+  assert.match(html, landingShell);
+  assert.match(html, /href="\/new"/);
+  assert.match(html, /<noscript>/);
 });
 
