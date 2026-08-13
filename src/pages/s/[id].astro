@@ -1,20 +1,19 @@
 ---
 import Base from "../../layouts/Base.astro";
 import {
-  getSession,
   normalizeSessionId,
   recordVote,
   setSessionOpen,
 } from "../../lib/db.ts";
 import { readForm } from "../../lib/form.ts";
-import { listPlaces, winningSlots } from "../../lib/session.ts";
 import { qrSvg } from "../../lib/share.ts";
 
-const id = Astro.params.id ?? "";
-const canonicalId = normalizeSessionId(id) ?? id;
+const canonicalId = normalizeSessionId(Astro.params.id ?? "");
+if (canonicalId === null) return new Response(null, { status: 404 });
+
 const voteActions = ["upvote", "downvote"];
-const allowedPlaces = ["1", "2", "3", "4"];
 const sessionActions = ["close", "reopen"];
+const allowedPlaces = ["1", "2", "3", "4"];
 const invalidRequest = "Permintaan tidak valid";
 
 let error: string | null = null;
@@ -32,20 +31,21 @@ if (Astro.request.method === "POST") {
   ) {
     error = invalidRequest;
   } else if (sessionActions.includes(action)) {
-    const result = setSessionOpen(id, action === "reopen");
+    const result = setSessionOpen(canonicalId, action === "reopen");
     if (result.ok) return Astro.redirect(`/s/${canonicalId}`, 303);
     return new Response(null, { status: 404 });
   } else if (typeof place !== "string" || !allowedPlaces.includes(place)) {
     error = invalidRequest;
   } else {
     const result = recordVote(
-      id,
+      canonicalId,
       Number(place),
       action === "downvote" ? -1 : 1,
     );
     if (result.ok) return Astro.redirect(`/s/${canonicalId}`, 303);
-    if (result.reason === "not_found")
+    if (result.reason === "not_found") {
       return new Response(null, { status: 404 });
+    }
     if (result.reason === "closed") {
       error = "Sesi sudah ditutup";
       status = 409;
@@ -56,62 +56,23 @@ if (Astro.request.method === "POST") {
   Astro.response.status = status;
 }
 
-const session = error === null ? getSession(id) : undefined;
-if (error === null && session === undefined) {
-  return new Response(null, { status: 404 });
-}
-const title = error ?? String(session?.title ?? "");
-const places = session === undefined ? [] : listPlaces(session);
-const isOpen = session !== undefined && session.is_open === 1;
-const winners = isOpen ? [] : winningSlots(places);
 const shareUrl = new URL(`/s/${canonicalId}`, Astro.url).href;
-const qr = session === undefined ? null : await qrSvg(shareUrl);
+const qr = error === null ? await qrSvg(shareUrl) : null;
 ---
 
-<Base title={title}>
+<Base title={error ?? "Sesi vote"}>
   {
     error === null ? (
       <>
-        <h1>{title}</h1>
-        <ul>
-          {places.map((place) => (
-            <li
-              data-place={place.slot}
-              data-votes={place.votes}
-              data-winner={winners.includes(place.slot) ? "true" : undefined}
-            >
-              {place.name}: {place.votes} suara{" "}
-              {winners.includes(place.slot) && <strong>Pemenang</strong>}
-              {isOpen && (
-                <form method="post">
-                  <input type="hidden" name="place" value={place.slot} />
-                  <button name="action" value="upvote">
-                    Naik
-                  </button>{" "}
-                  <button name="action" value="downvote">
-                    Turun
-                  </button>
-                </form>
-              )}
-            </li>
-          ))}
-        </ul>
-        {!isOpen && winners.length === 0 && <p>Belum ada pemenang</p>}
-        {!isOpen && winners.length > 1 && <p>Seri!</p>}
-
-        {isOpen ? (
-          <form method="post">
-            <button name="action" value="close">
-              Tutup sesi
-            </button>
-          </form>
-        ) : (
-          <form method="post">
-            <button name="action" value="reopen">
-              Buka lagi
-            </button>
-          </form>
-        )}
+        <div
+          data-session="true"
+          data-id={canonicalId}
+          data-state="loading"
+          role="status"
+        >
+          <p>Memuat...</p>
+        </div>
+        <noscript>Halaman ini butuh JavaScript untuk menampilkan sesi.</noscript>
         <p>{shareUrl}</p>
         {qr && (
           <div role="img" aria-label="Kode QR untuk sesi ini" set:html={qr} />
