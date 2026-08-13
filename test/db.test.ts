@@ -272,7 +272,7 @@ test("recordVote increments only the voted place on an open session", async () =
   });
   const result = recordVote(id, 2, 1);
 
-  assert.deepEqual(result, { ok: true });
+  assert.equal(result.ok, true);
   const session = getSession(id);
 
   assert.equal(session?.place1_votes, 0);
@@ -286,7 +286,7 @@ test("recordVote clamps a downvote at zero", async () => {
   const id = createSession({ title: "Clamp", places: ["Warteg", "Padang"] });
   const result = recordVote(id, 1, -1);
 
-  assert.deepEqual(result, { ok: true });
+  assert.equal(result.ok, true);
   assert.equal(getSession(id)?.place1_votes, 0);
 });
 
@@ -317,9 +317,9 @@ test("setSessionOpen closes and reopens a session", async () => {
     await import("../src/lib/db.ts");
 
   const id = createSession({ title: "Tutup", places: ["Warteg", "Padang"] });
-  assert.deepEqual(setSessionOpen(id, false), { ok: true });
+  assert.equal(setSessionOpen(id, false).ok, true);
   assert.equal(getSession(id)?.is_open, 0);
-  assert.deepEqual(setSessionOpen(id, true), { ok: true });
+  assert.equal(setSessionOpen(id, true).ok, true);
   assert.equal(getSession(id)?.is_open, 1);
 });
 
@@ -341,4 +341,25 @@ test("recordVote reports closed once the session is closed", async () => {
 
   assert.deepEqual(result, { ok: false, reason: "closed" });
   assert.equal(getSession(id)?.place1_votes, 1);
+});
+
+test("recordVote and setSessionOpen return the updated session", async () => {
+  const { createSession, recordVote, setSessionOpen } = await import(
+    "../src/lib/db.ts"
+  );
+
+  const id = createSession({
+    title: "Sesi kembali",
+    places: ["Warteg", "Padang"],
+  });
+
+  const voted = recordVote(id, 1, 1);
+  if (!voted.ok) throw new Error("expected the vote to succeed");
+  assert.equal(voted.session.id, id);
+  assert.equal(voted.session.place1_votes, 1);
+
+  const closed = setSessionOpen(id, false);
+  if (!closed.ok) throw new Error("expected the close to succeed");
+  assert.equal(closed.session.is_open, 0);
+  assert.equal(closed.session.place1_votes, 1);
 });

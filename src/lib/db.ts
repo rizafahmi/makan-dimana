@@ -96,31 +96,31 @@ export const listSessions = () =>
 type FailureReason = "not_found" | "closed" | "no_such_place";
 const fail = (reason: FailureReason) => ({ ok: false as const, reason });
 const voteUpdates = [
-  "UPDATE vote_sessions SET place1_votes = MAX(0, place1_votes + ?) WHERE id = ? AND is_open = 1 AND place1_name IS NOT NULL",
-  "UPDATE vote_sessions SET place2_votes = MAX(0, place2_votes + ?) WHERE id = ? AND is_open = 1 AND place2_name IS NOT NULL",
-  "UPDATE vote_sessions SET place3_votes = MAX(0, place3_votes + ?) WHERE id = ? AND is_open = 1 AND place3_name IS NOT NULL",
-  "UPDATE vote_sessions SET place4_votes = MAX(0, place4_votes + ?) WHERE id = ? AND is_open = 1 AND place4_name IS NOT NULL",
+  "UPDATE vote_sessions SET place1_votes = MAX(0, place1_votes + ?) WHERE id = ? AND is_open = 1 AND place1_name IS NOT NULL RETURNING *",
+  "UPDATE vote_sessions SET place2_votes = MAX(0, place2_votes + ?) WHERE id = ? AND is_open = 1 AND place2_name IS NOT NULL RETURNING *",
+  "UPDATE vote_sessions SET place3_votes = MAX(0, place3_votes + ?) WHERE id = ? AND is_open = 1 AND place3_name IS NOT NULL RETURNING *",
+  "UPDATE vote_sessions SET place4_votes = MAX(0, place4_votes + ?) WHERE id = ? AND is_open = 1 AND place4_name IS NOT NULL RETURNING *",
 ];
 
 export const recordVote = (id: string, place: number, delta: number) => {
   const canonical = normalizeSessionId(id);
   if (canonical === null) return fail("not_found");
-  const result = db.prepare(voteUpdates[place - 1]).run(delta, canonical);
-  if (result.changes === 0) {
-    const session = getSession(canonical);
-    if (session === undefined) return fail("not_found");
-    if (session[`place${place}_name`] === null) return fail("no_such_place");
+  const session = db.prepare(voteUpdates[place - 1]).get(delta, canonical);
+  if (session === undefined) {
+    const existing = getSession(canonical);
+    if (existing === undefined) return fail("not_found");
+    if (existing[`place${place}_name`] === null) return fail("no_such_place");
     return fail("closed");
   }
-  return { ok: true as const };
+  return { ok: true as const, session };
 };
 
 export const setSessionOpen = (id: string, isOpen: boolean) => {
   const canonical = normalizeSessionId(id);
   if (canonical === null) return fail("not_found");
-  const result = db
-    .prepare("UPDATE vote_sessions SET is_open = ? WHERE id = ?")
-    .run(isOpen ? 1 : 0, canonical);
-  if (result.changes === 0) return fail("not_found");
-  return { ok: true as const };
+  const session = db
+    .prepare("UPDATE vote_sessions SET is_open = ? WHERE id = ? RETURNING *")
+    .get(isOpen ? 1 : 0, canonical);
+  if (session === undefined) return fail("not_found");
+  return { ok: true as const, session };
 };

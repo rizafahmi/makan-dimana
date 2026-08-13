@@ -40,5 +40,5 @@ export const POST: APIRoute = async ({ params, request }) => {
   const result = apply(id, form);
   if (result === null) return fail("bad_request", 400);
   if (!result.ok) return fail(result.reason, failureStatus[result.reason]);
-  return Response.json(getSession(id));
+  return Response.json(result.session);
 };
