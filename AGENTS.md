@@ -9,7 +9,10 @@ Read this section before taking any action.
 * Never create, edit, move, rename, or delete project files. Show me every proposed edit in the chat so I can type it in manually.
 * Never run commands that modify files, install dependencies, or change repository state. Show me the command so I can run it myself.
 * I'm an experienced developer. Do not explain syntax, APIs, programming concepts, or implementation details unless I ask.
-* Every page renders on the server. No client-side data fetching.
+* Routes that load data render their shell on the server and fetch data from the client. Routes with no data to load stay fully server-rendered: `/new`, `/404`, `/500`. `/` and `/s/[id]` are not.
+* The app requires JavaScript. A deliberate trade on this branch, to make loading state visible.
+* Client rendering builds DOM with `createElement` and `textContent`. Never pass user-supplied text through `innerHTML`.
+* `src/lib/db.ts` and `src/lib/share.ts` are server-only. `session.ts`, `time.ts` and `validate.ts` are isomorphic. Client code must never import a server-only module.
 * Avoid third-party dependencies. Prefer `node:` builtins and Astro's own APIs. Adding any dependency needs my approval first.
 * pnpm is the only package manager here. Never run `npm install` or `yarn` - a stray npm install prunes pnpm's tree and desyncs the lockfile.
 * Pin exact versions. `pnpm-workspace.yaml` sets `saveExact: true`, so plain `pnpm add <pkg>` already writes an exact version; no flag to remember.
@@ -19,7 +22,7 @@ Read this section before taking any action.
 
 ## Test-driven development
 
-No production code without a failing test first. Features, bug fixes, and behavior changes all qualify; `astro.config.mjs` and other configuration are the only exceptions.
+No production code without a failing test first. Features, bug fixes, and behavior changes all qualify. The only exceptions are `astro.config.mjs` and other configuration, and DOM plumbing, which no test in this repo can reach.
 
 Because I type every change myself, the loop is:
 
@@ -51,6 +54,7 @@ Node 24 is the floor because both `node:sqlite` and TypeScript type stripping ar
 * A unit suite must set `process.env.MAKAN_DB` before the first import of `src/lib/db.ts`, and therefore import it dynamically. The connection opens at module evaluation.
 * e2e suites reach the server over HTTP only. Never open the test database directly while the spawned server holds a connection - the `PRAGMA journal_mode` assertion silently no-ops when a second connection is open.
 * No DOM parser is available, so e2e assertions are substring or regex matches over the raw HTML.
+* Endpoint suites assert over parsed JSON rather than HTML substrings.
 
 ## Database
 
@@ -85,6 +89,9 @@ An unused optional place slot is NULL, never `''`. Every guard that skips, block
 ## Where To Look
 
 * `PLAN.md` - the build order, plus decisions, non-goals, HTTP behavior, and session id handling. Read the relevant step before implementing anything.
+* `docs/talk.md` - why this repo exists and why v2 is deliberately worse than v1. Read it before proposing an improvement to the baseline.
+* `docs/plan-v2.md` - the v2 build order. `PLAN.md` is the closed v1 record; v2 contradicts a few of its decisions and says so.
+* `docs/adr/` - decisions a reader will otherwise try to "fix": no service worker, and v2 requiring JavaScript.
 * `src/lib/db.ts` - connection, schema, and session queries. Authoritative for the schema once it exists; keep it and the data model above in sync.
 * `src/pages/` - routes. `/` is the landing page and public session list, `/new` creates a session, `/s/[id]` votes and shows the winner.
 * `src/lib/` - domain logic, so closed-session and missing-slot behavior is unit-testable before the routes that expose it exist. Pages stay thin wrappers that map results to status codes.
