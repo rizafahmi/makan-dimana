@@ -1,4 +1,4 @@
-import { listPlaces, winningSlots } from "../lib/session.ts";
+import { listPlaces, winnerView } from "../lib/session.ts";
 import { relativeTime } from "../lib/time.ts";
 
 type Row = { id: string; title: string; is_open: number; created_at: string };
@@ -43,7 +43,7 @@ const mountSession = (root: HTMLElement) => {
 
     const isOpen = session.is_open === 1;
     const places = listPlaces(session);
-    const winners = isOpen ? [] : winningSlots(places);
+    const { winners, label, note } = winnerView(places, isOpen);
     const list = el("ul");
 
     for (const place of places) {
@@ -55,7 +55,7 @@ const mountSession = (root: HTMLElement) => {
 
       if (winners.includes(place.slot)) {
         item.dataset.winner = "true";
-        item.append(el("strong", "Pemenang"));
+        item.append(el("strong", label));
       }
       if (isOpen) {
         item.append(
@@ -70,10 +70,7 @@ const mountSession = (root: HTMLElement) => {
     }
     root.append(list);
 
-    if (!isOpen && winners.length === 0) {
-      root.append(el("p", "Belum ada pemenang"));
-    }
-    if (!isOpen && winners.length > 1) root.append(el("p", "Seri!"));
+    if (note !== null) root.append(el("p", note));
 
     root.append(
       isOpen

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { listPlaces, winningSlots } from "../src/lib/session.ts";
+import { listPlaces, winnerView, winningSlots } from "../src/lib/session.ts";
 
 const row = (fields: Record<string, unknown>) => ({
   place1_name: "Warteg",
@@ -51,4 +51,32 @@ test("listPlaces orders by votes, with ties keeping slot order", () => {
     tied.map((place) => place.slot),
     [1, 2, 3],
   );
+});
+
+test("winnerView carries the Indonesian winner copy for each outcome", () => {
+  const leader = winnerView(
+    listPlaces(row({ place1_votes: 2, place2_votes: 1 })),
+    false,
+  );
+  assert.deepEqual(leader.winners, [1]);
+  assert.equal(leader.label, "Pemenang");
+  assert.equal(leader.note, null);
+
+  const tie = winnerView(
+    listPlaces(row({ place1_votes: 3, place2_votes: 3 })),
+    false,
+  );
+  assert.deepEqual(tie.winners, [1, 2]);
+  assert.equal(tie.note, "Seri!");
+
+  const allZero = winnerView(listPlaces(row({})), false);
+  assert.deepEqual(allZero.winners, []);
+  assert.equal(allZero.note, "Belum ada pemenang");
+
+  const open = winnerView(
+    listPlaces(row({ place1_votes: 2, place2_votes: 1 })),
+    true,
+  );
+  assert.deepEqual(open.winners, []);
+  assert.equal(open.note, null);
 });

@@ -22,3 +22,14 @@ export const winningSlots = (places: Place[]) => {
     .filter((place) => place.votes === top)
     .map((place) => place.slot);
 };
+
+export const winnerView = (places: Place[], isOpen: boolean) => {
+  const winners = isOpen ? [] : winningSlots(places);
+  const note =
+    isOpen || winners.length === 1
+      ? null
+      : winners.length === 0
+        ? "Belum ada pemenang"
+        : "Seri!";
+  return { winners, label: "Pemenang", note };
+};
