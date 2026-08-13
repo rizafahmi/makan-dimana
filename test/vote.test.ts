@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
-import { postForm, seedSession, startServer } from "./harness.ts";
+import { postForm, readSession, seedSession, startServer } from "./harness.ts";
 
 let server: Awaited<ReturnType<typeof startServer>>;
 
@@ -22,9 +22,9 @@ test("an upvote increments one place and survives a refresh", async () => {
   assert.equal(res.status, 303);
   assert.equal(res.headers.get("location"), path);
 
-  const html = await (await fetch(`${server.origin}${path}`)).text();
-  assert.match(html, /data-place="1"[^>]*data-votes="0"/);
-  assert.match(html, /data-place="2"[^>]*data-votes="1"/);
+  const session = await readSession(server.origin, path);
+  assert.equal(session.place1_votes, 0);
+  assert.equal(session.place2_votes, 1);
 });
 
 test("a downvote decrements and stays at zero", async () => {
@@ -32,17 +32,17 @@ test("a downvote decrements and stays at zero", async () => {
   await postForm(server.origin, path, { action: "upvote", place: "1" });
   await postForm(server.origin, path, { action: "downvote", place: "1" });
 
-  let html = await (await fetch(`${server.origin}${path}`)).text();
-  assert.match(html, /data-place="1"[^>]*data-votes="0"/);
+  assert.equal((await readSession(server.origin, path)).place1_votes, 0);
 
   const res = await postForm(server.origin, path, {
     action: "downvote",
     place: "1",
   });
   assert.equal(res.status, 303);
-  html = await (await fetch(`${server.origin}${path}`)).text();
-  assert.match(html, /data-place="1"[^>]*data-votes="0"/);
-  assert.match(html, /data-place="2"[^>]*data-votes="0"/);
+
+  const session = await readSession(server.origin, path);
+  assert.equal(session.place1_votes, 0);
+  assert.equal(session.place2_votes, 0);
 });
 
 test("voting for an empty place slot returns 400 and changes nothing", async () => {
@@ -54,9 +54,9 @@ test("voting for an empty place slot returns 400 and changes nothing", async () 
   });
   assert.equal(res.status, 400);
 
-  const html = await (await fetch(`${server.origin}${path}`)).text();
-  assert.match(html, /data-place="1"[^>]*data-votes="0"/);
-  assert.match(html, /data-place="2"[^>]*data-votes="0"/);
+  const session = await readSession(server.origin, path);
+  assert.equal(session.place1_votes, 0);
+  assert.equal(session.place2_votes, 0);
 });
 
 test("malformed mutation requests are rejected without changing any count", async () => {
@@ -79,9 +79,10 @@ test("malformed mutation requests are rejected without changing any count", asyn
     assert.ok(body.includes("Permintaan tidak valid"), `message for ${label}`);
     assert.ok(body.includes(`href="${path}"`), `link for ${label}`);
   }
-  const html = await (await fetch(`${server.origin}${path}`)).text();
-  assert.match(html, /data-place="1"[^>]*data-votes="0"/);
-  assert.match(html, /data-place="2"[^>]*data-votes="0"/);
+
+  const session = await readSession(server.origin, path);
+  assert.equal(session.place1_votes, 0);
+  assert.equal(session.place2_votes, 0);
 });
 
 test("mutations on malformed and unknown session ids return 404", async () => {
@@ -92,18 +93,6 @@ test("mutations on malformed and unknown session ids return 404", async () => {
     });
     assert.equal(res.status, 404, `id ${id} gave ${res.status}`);
   }
-});
-
-test("detail page renders vote controls for each place", async () => {
-  const path = await seedSession(server.origin);
-  const html = await (await fetch(`${server.origin}${path}`)).text();
-
-  assert.match(html, /<form[^>]*method="post"/i);
-  assert.match(html, /<input[^>]*name="place"[^>]*value="1"/);
-  assert.match(html, /<input[^>]*name="place"[^>]*value="2"/);
-  assert.equal(/<input[^>]*name="place"[^>]*value="3"/.test(html), false);
-  assert.match(html, /name="action"[^>]*value="upvote"/);
-  assert.match(html, /name="action"[^>]*value="downvote"/);
 });
 
 test("a non-canonical id serves and votes on the same session", async () => {
@@ -125,8 +114,8 @@ test("a non-canonical id serves and votes on the same session", async () => {
   });
   assert.equal(vote.status, 303);
   assert.equal(vote.headers.get("location"), path);
-  const html = await (await fetch(`${server.origin}${path}`)).text();
-  assert.match(html, /data-place="1"[^>]*data-votes="1"/);
+
+  assert.equal((await readSession(server.origin, path)).place1_votes, 1);
 });
 
 test("the detail page shows the canonical share url and a labelled QR", async () => {

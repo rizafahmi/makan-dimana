@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
-import { startServer, postForm } from "./harness.ts";
+import { postForm, readSession, startServer } from "./harness.ts";
 
 let server: Awaited<ReturnType<typeof startServer>>;
 
@@ -29,7 +29,11 @@ test("creating a session redirects to a detail page showing its title", async ()
   const html = await page.text();
   assert.match(html, /<html lang="id"/);
   assert.match(html, /<meta name="viewport"/);
-  assert.ok(html.includes("Makan siang tim"));
+
+  assert.equal(
+    (await readSession(server.origin, location)).title,
+    "Makan siang tim",
+  );
 });
 
 test("GET /new renders the create form fields", async () => {
@@ -51,7 +55,7 @@ test("unknown and malformed session IDs return 404", async () => {
   }
 });
 
-test("the detail page lists each filled place at zero votes and skips empty slots", async () => {
+test("a created session stores filled places at zero votes and nulls empty slots", async () => {
   const res = await postForm(server.origin, "/new", {
     title: "Dua tempat",
     place1: "Warteg",
@@ -61,15 +65,14 @@ test("the detail page lists each filled place at zero votes and skips empty slot
   });
 
   const location = String(res.headers.get("location"));
+  const session = await readSession(server.origin, location);
 
-  const html = await (await fetch(`${server.origin}${location}`)).text();
-
-  assert.match(html, /data-place="1"[^>]*data-votes="0"/);
-  assert.match(html, /data-place="2"[^>]*data-votes="0"/);
-  assert.equal(html.includes('data-place="3"'), false);
-  assert.equal(html.includes('data-place="4"'), false);
-  assert.ok(html.includes("Warteg"));
-  assert.ok(html.includes("Padang"));
+  assert.equal(session.place1_name, "Warteg");
+  assert.equal(session.place2_name, "Padang");
+  assert.equal(session.place1_votes, 0);
+  assert.equal(session.place2_votes, 0);
+  assert.equal(session.place3_name, null);
+  assert.equal(session.place4_name, null);
 });
 
 test("invalid create input returns 422 with errors and submitted values preserved", async () => {

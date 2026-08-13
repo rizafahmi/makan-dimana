@@ -92,3 +92,11 @@ export const seedSession = async (
   });
   return String(res.headers.get("location"));
 };
+
+export const sessionId = (path: string) => String(path.split("/").pop());
+
+export const readSession = async (origin: string, path: string) =>
+  (await fetch(`${origin}/api/sessions/${sessionId(path)}`)).json();
+
+export const readSessions = async (origin: string) =>
+  (await fetch(`${origin}/api/sessions`)).json();

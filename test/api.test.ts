@@ -166,3 +166,13 @@ test("POST /api/sessions/[id] returns 404 for unknown and malformed ids", async 
   }
 });
 
+test("GET /api/sessions reports open and closed state", async () => {
+  const id = await seedId("Sesi status");
+  await mutate(id, { action: "close" });
+
+  const body = await (await fetch(`${server.origin}/api/sessions`)).json();
+  const row = body.find((session: { id: string }) => session.id === id);
+
+  assert.equal(row.is_open, 0);
+});
+
