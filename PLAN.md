@@ -175,7 +175,7 @@ Pin these before writing the first test; the e2e suites hard-code them.
 
 - [x] Serve valid non-canonical ids in place, without redirecting
       Done when: /s/ABC12QX renders the same session as /s/abc12qx with 200, /s/abc12ox renders the same session as /s/abc120x with 200, voting through a non-canonical URL updates the same row the canonical one shows, and malformed ids still return 404
-- [ ] Install with `pnpm add qrcode` and `pnpm add -D @types/qrcode`; render the QR server-side with `QRCode.toString(url, { type: 'svg' })` so no client JS is added
+- [x] Install with `pnpm add qrcode` and `pnpm add -D @types/qrcode`; render the QR server-side with `QRCode.toString(url, { type: 'svg' })` so no client JS is added
       The payload is the absolute canonical session URL based on the current request origin; deployment must preserve the public scheme and Host header
       The SVG is injected with `set:html`. That is the only place in the app where Astro's auto-escaping is bypassed, and the input is library-generated; user-supplied titles and place names must never be rendered that way
       Show the canonical share URL as text and give the QR an accessible Indonesian label

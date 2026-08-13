@@ -9,6 +9,7 @@ import {
 } from "../../lib/db.ts";
 import { readForm } from "../../lib/form.ts";
 import { listPlaces, winningSlots } from "../../lib/session.ts";
+import { qrSvg } from "../../lib/share.ts";
 
 const id = Astro.params.id ?? "";
 const canonicalId = normalizeSessionId(id) ?? id;
@@ -64,6 +65,8 @@ const title = session === undefined ? invalidRequest : String(session.title);
 const places = session === undefined ? [] : listPlaces(session);
 const isOpen = session !== undefined && session.is_open === 1;
 const winners = isOpen ? [] : winningSlots(places);
+const shareUrl = new URL(`/s/${canonicalId}`, Astro.url).href;
+const qr = session === undefined ? null : await qrSvg(shareUrl);
 ---
 
 <Base title={title}>
@@ -109,6 +112,10 @@ const winners = isOpen ? [] : winningSlots(places);
               Buka lagi
             </button>
           </form>
+        )}
+        <p>{shareUrl}</p>
+        {qr && (
+          <div role="img" aria-label="Kode QR untuk sesi ini" set:html={qr} />
         )}
       </>
     ) : (

@@ -128,3 +128,11 @@ test("a non-canonical id serves and votes on the same session", async () => {
   const html = await (await fetch(`${server.origin}${path}`)).text();
   assert.match(html, /data-place="1"[^>]*data-votes="1"/);
 });
+
+test("the detail page shows the canonical share url and a labelled QR", async () => {
+  const path = await seedSession(server.origin);
+  const html = await (await fetch(`${server.origin}${path}`)).text();
+  assert.ok(html.includes(`${server.origin}${path}`));
+  assert.match(html, /<svg/);
+  assert.ok(html.includes("Kode QR untuk sesi ini"));
+});
