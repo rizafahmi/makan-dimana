@@ -136,6 +136,10 @@ test("POST /api/sessions/[id] close and reopen are idempotent", async () => {
   const reopened = await mutate(id, { action: "reopen" });
   assert.equal(reopened.status, 200);
   assert.equal((await reopened.json()).is_open, 1);
+
+  const reopenedAgain = await mutate(id, { action: "reopen" });
+  assert.equal(reopenedAgain.status, 200);
+  assert.equal((await reopenedAgain.json()).is_open, 1);
 });
 
 test("POST /api/sessions/[id] returns 409 for a vote on a closed session", async () => {
@@ -157,6 +161,10 @@ test("POST /api/sessions/[id] returns 400 for a non-form body", async () => {
   });
 
   assert.equal(res.status, 400);
+
+  const state = await read(id);
+  assert.equal(state.place1_votes, 0);
+  assert.equal(state.place2_votes, 0);
 });
 
 test("POST /api/sessions/[id] returns 404 for unknown and malformed ids", async () => {
