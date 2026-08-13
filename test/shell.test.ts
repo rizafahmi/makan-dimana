@@ -51,3 +51,27 @@ test("/ ships a loading shell carrying no session data", async () => {
   assert.match(html, /<noscript>/);
 });
 
+test("a non-canonical id serves the same shell under its canonical id", async () => {
+  const path = await seedSession(server.origin);
+  const id = path.slice(3);
+
+  for (const variant of [
+    `/s/${id.toUpperCase()}`,
+    `/s/${id.replaceAll("0", "o").replaceAll("1", "l")}`,
+  ]) {
+    const res = await fetch(`${server.origin}${variant}`, {
+      redirect: "manual",
+    });
+    assert.equal(res.status, 200, `${variant} gave ${res.status}`);
+    assert.match(await res.text(), new RegExp(`data-id="${id}"`));
+  }
+});
+
+test("the detail shell shows the canonical share url and a labelled QR", async () => {
+  const path = await seedSession(server.origin);
+  const html = await (await fetch(`${server.origin}${path}`)).text();
+
+  assert.ok(html.includes(`${server.origin}${path}`));
+  assert.match(html, /<svg/);
+  assert.ok(html.includes("Kode QR untuk sesi ini"));
+});

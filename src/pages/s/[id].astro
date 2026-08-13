@@ -1,90 +1,25 @@
 ---
 import Base from "../../layouts/Base.astro";
-import {
-  normalizeSessionId,
-  recordVote,
-  setSessionOpen,
-} from "../../lib/db.ts";
-import { readForm } from "../../lib/form.ts";
+import { normalizeSessionId } from "../../lib/db.ts";
 import { qrSvg } from "../../lib/share.ts";
 
 const canonicalId = normalizeSessionId(Astro.params.id ?? "");
 if (canonicalId === null) return new Response(null, { status: 404 });
 
-const voteActions = ["upvote", "downvote"];
-const sessionActions = ["close", "reopen"];
-const allowedPlaces = ["1", "2", "3", "4"];
-const invalidRequest = "Permintaan tidak valid";
-
-let error: string | null = null;
-let status = 400;
-
-if (Astro.request.method === "POST") {
-  const form = await readForm(Astro.request);
-  if (form === null) return new Response(null, { status: 400 });
-  const action = form.get("action");
-  const place = form.get("place");
-
-  if (
-    typeof action !== "string" ||
-    (!voteActions.includes(action) && !sessionActions.includes(action))
-  ) {
-    error = invalidRequest;
-  } else if (sessionActions.includes(action)) {
-    const result = setSessionOpen(canonicalId, action === "reopen");
-    if (result.ok) return Astro.redirect(`/s/${canonicalId}`, 303);
-    return new Response(null, { status: 404 });
-  } else if (typeof place !== "string" || !allowedPlaces.includes(place)) {
-    error = invalidRequest;
-  } else {
-    const result = recordVote(
-      canonicalId,
-      Number(place),
-      action === "downvote" ? -1 : 1,
-    );
-    if (result.ok) return Astro.redirect(`/s/${canonicalId}`, 303);
-    if (result.reason === "not_found") {
-      return new Response(null, { status: 404 });
-    }
-    if (result.reason === "closed") {
-      error = "Sesi sudah ditutup";
-      status = 409;
-    } else {
-      error = invalidRequest;
-    }
-  }
-  Astro.response.status = status;
-}
-
 const shareUrl = new URL(`/s/${canonicalId}`, Astro.url).href;
-const qr = error === null ? await qrSvg(shareUrl) : null;
+const qr = await qrSvg(shareUrl);
 ---
 
-<Base title={error ?? "Sesi vote"}>
-  {
-    error === null ? (
-      <>
-        <div
-          data-session="true"
-          data-id={canonicalId}
-          data-state="loading"
-          role="status"
-        >
-          <p>Memuat...</p>
-        </div>
-        <noscript>Halaman ini butuh JavaScript untuk menampilkan sesi.</noscript>
-        <p>{shareUrl}</p>
-        {qr && (
-          <div role="img" aria-label="Kode QR untuk sesi ini" set:html={qr} />
-        )}
-      </>
-    ) : (
-      <>
-        <p>{error}</p>
-        <p>
-          <a href={`/s/${canonicalId}`}>Kembali ke sesi</a>
-        </p>
-      </>
-    )
-  }
+<Base title="Sesi vote">
+  <div
+    data-session="true"
+    data-id={canonicalId}
+    data-state="loading"
+    role="status"
+  >
+    <p>Memuat...</p>
+  </div>
+  <noscript>Halaman ini butuh JavaScript untuk menampilkan sesi.</noscript>
+  <p>{shareUrl}</p>
+  {qr && <div role="img" aria-label="Kode QR untuk sesi ini" set:html={qr} />}
 </Base>

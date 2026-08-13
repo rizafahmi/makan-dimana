@@ -176,3 +176,12 @@ test("GET /api/sessions reports open and closed state", async () => {
   assert.equal(row.is_open, 0);
 });
 
+test("POST /api/sessions/[id] accepts a non-canonical id", async () => {
+  const id = await seedId("Sesi non-kanonik");
+  const shouty = id.replaceAll("1", "l").replaceAll("0", "o").toUpperCase();
+
+  const res = await mutate(shouty, { action: "upvote", place: "1" });
+  assert.equal(res.status, 200);
+  assert.equal((await res.json()).id, id);
+  assert.equal((await read(id)).place1_votes, 1);
+});
