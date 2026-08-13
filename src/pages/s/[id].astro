@@ -1,10 +1,17 @@
 ---
+import { normalize } from "astro:schema";
 import Base from "../../layouts/Base.astro";
-import { getSession, recordVote, setSessionOpen } from "../../lib/db.ts";
+import {
+  getSession,
+  normalizeSessionId,
+  recordVote,
+  setSessionOpen,
+} from "../../lib/db.ts";
 import { readForm } from "../../lib/form.ts";
 import { listPlaces, winningSlots } from "../../lib/session.ts";
 
 const id = Astro.params.id ?? "";
+const canonicalId = normalizeSessionId(id) ?? id;
 const voteActions = ["upvote", "downvote"];
 const allowedPlaces = ["1", "2", "3", "4"];
 const sessionActions = ["close", "reopen"];
@@ -26,7 +33,7 @@ if (Astro.request.method === "POST") {
     error = invalidRequest;
   } else if (sessionActions.includes(action)) {
     const result = setSessionOpen(id, action === "reopen");
-    if (result.ok) return Astro.redirect(`/s/${id}`, 303);
+    if (result.ok) return Astro.redirect(`/s/${canonicalId}`, 303);
     return new Response(null, { status: 404 });
   } else if (typeof place !== "string" || !allowedPlaces.includes(place)) {
     error = invalidRequest;
@@ -36,7 +43,7 @@ if (Astro.request.method === "POST") {
       Number(place),
       action === "downvote" ? -1 : 1,
     );
-    if (result.ok) return Astro.redirect(`/s/${id}`, 303);
+    if (result.ok) return Astro.redirect(`/s/${canonicalId}`, 303);
     if (result.reason === "not_found")
       return new Response(null, { status: 404 });
     if (result.reason === "closed") {
@@ -108,7 +115,7 @@ const winners = isOpen ? [] : winningSlots(places);
       <>
         <p>{error}</p>
         <p>
-          <a href={`/s/${id}`}>Kembali ke sesi</a>
+          <a href={`/s/${canonicalId}`}>Kembali ke sesi</a>
         </p>
       </>
     )

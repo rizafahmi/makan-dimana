@@ -105,3 +105,26 @@ test("detail page renders vote controls for each place", async () => {
   assert.match(html, /name="action"[^>]*value="upvote"/);
   assert.match(html, /name="action"[^>]*value="downvote"/);
 });
+
+test("a non-canonical id serves and votes on the same session", async () => {
+  const path = await seedSession(server.origin);
+  const id = path.slice(3);
+  const shouty = `/s/${id.toUpperCase()}`;
+  const lookalike = `/s/${id.replaceAll("0", "o").replaceAll("1", "l")}`;
+
+  for (const variant of [shouty, lookalike]) {
+    const res = await fetch(`${server.origin}${variant}`, {
+      redirect: "manual",
+    });
+    assert.equal(res.status, 200, `${variant} gave ${res.status}`);
+  }
+
+  const vote = await postForm(server.origin, shouty, {
+    action: "upvote",
+    place: "1",
+  });
+  assert.equal(vote.status, 303);
+  assert.equal(vote.headers.get("location"), path);
+  const html = await (await fetch(`${server.origin}${path}`)).text();
+  assert.match(html, /data-place="1"[^>]*data-votes="1"/);
+});

@@ -113,9 +113,11 @@ const voteUpdates = [
 ];
 
 export const recordVote = (id: string, place: number, delta: number) => {
-  const result = db.prepare(voteUpdates[place - 1]).run(delta, id);
+  const canonical = normalizeSessionId(id);
+  if (canonical === null) return fail("not_found");
+  const result = db.prepare(voteUpdates[place - 1]).run(delta, canonical);
   if (result.changes === 0) {
-    const session = getSession(id);
+    const session = getSession(canonical);
     if (session === undefined) return fail("not_found");
     if (session[`place${place}_name`] === null) return fail("no_such_place");
     return fail("closed");
@@ -124,9 +126,11 @@ export const recordVote = (id: string, place: number, delta: number) => {
 };
 
 export const setSessionOpen = (id: string, isOpen: boolean) => {
+  const canonical = normalizeSessionId(id);
+  if (canonical === null) return fail("not_found");
   const result = db
     .prepare("UPDATE vote_sessions SET is_open = ? WHERE id = ?")
-    .run(isOpen ? 1 : 0, id);
+    .run(isOpen ? 1 : 0, canonical);
   if (result.changes === 0) return fail("not_found");
   return { ok: true as const };
 };
