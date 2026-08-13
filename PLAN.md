@@ -151,7 +151,7 @@ Pin these before writing the first test; the e2e suites hard-code them.
       Done when: unit tests written first cover incrementing exactly one present place, clamping a 0-vote place at 0, `reason: 'no_such_place'` for an empty slot, `reason: 'closed'` after setSessionOpen(id, false), and `reason: 'not_found'` for an unknown id - all provable before any close route exists
 - [x] Wire upvote and downvote on /s/[id] to recordVote and map results to status codes
       Done when: an e2e upvote increments one place and survives a refresh, a downvote at 0 stays at 0, an empty place slot returns 400, and neither changes any other count
-- [ ] Reject malformed mutation requests on /s/[id] before touching the database, following the precedence list above
+- [x] Reject malformed mutation requests on /s/[id] before touching the database, following the precedence list above
       Done when: a POST with no `action` returns 400, `action=bogus` returns 400, a vote with no `place` returns 400, `place=02` and `place=5` return 400, none of them change any count, and each response body carries the Indonesian error message and a link back to the session
 - [ ] Guard `Astro.request.formData()` on every POST endpoint (/new and /s/[id]) so a non-form, unparseable, or oversized POST body returns 400 instead of an unhandled 500
       Done when: a POST with `content-type: application/json` and a garbage body returns 400 on both /new and /s/[id], a body over `bodySizeLimit` returns 400, and neither changes any count

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
-import { startServer, seedSession, postForm } from "./harness.ts";
+import { startServer, seedSession } from "./harness.ts";
 
 let server: Awaited<ReturnType<typeof startServer>>;
 
