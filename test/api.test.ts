@@ -197,3 +197,24 @@ test("POST /api/sessions/[id] accepts a non-canonical id", async () => {
   assert.equal((await res.json()).id, id);
   assert.equal((await read(id)).place1_votes, 1);
 });
+
+test("POST /api/sessions/[id] reports why a mutation failed", async () => {
+  const id = await seedId("Sesi alasan");
+
+  const bogus = await mutate(id, { action: "bogus" });
+  assert.equal(bogus.status, 400);
+  assert.deepEqual(await bogus.json(), { error: "bad_request" });
+
+  const slot = await mutate(id, { action: "upvote", place: "3" });
+  assert.equal(slot.status, 400);
+  assert.deepEqual(await slot.json(), { error: "no_such_place" });
+
+  await mutate(id, { action: "close" });
+  const closed = await mutate(id, { action: "upvote", place: "1" });
+  assert.equal(closed.status, 409);
+  assert.deepEqual(await closed.json(), { error: "closed" });
+
+  const missing = await mutate("zzzzzzz", { action: "upvote", place: "1" });
+  assert.equal(missing.status, 404);
+  assert.deepEqual(await missing.json(), { error: "not_found" });
+});

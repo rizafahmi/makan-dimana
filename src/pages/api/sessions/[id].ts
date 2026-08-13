@@ -12,6 +12,9 @@ const sessionActions = ["close", "reopen"];
 const allowedPlaces = ["1", "2", "3", "4"];
 const failureStatus = { not_found: 404, no_such_place: 400, closed: 409 };
 
+const fail = (error: string, status: number) =>
+  Response.json({ error }, { status });
+
 const apply = (id: string, form: FormData) => {
   const action = form.get("action");
   const place = form.get("place");
@@ -27,21 +30,19 @@ const apply = (id: string, form: FormData) => {
 
 export const GET: APIRoute = ({ params }) => {
   const session = getSession(params.id ?? "");
-  if (session === undefined) return new Response(null, { status: 404 });
+  if (session === undefined) return fail("not_found", 404);
   return Response.json(session);
 };
 
 export const POST: APIRoute = async ({ params, request }) => {
   const id = normalizeSessionId(params.id ?? "");
-  if (id === null) return new Response(null, { status: 404 });
+  if (id === null) return fail("not_found", 404);
 
   const form = await readForm(request);
-  if (form === null) return new Response(null, { status: 400 });
+  if (form === null) return fail("bad_request", 400);
 
   const result = apply(id, form);
-  if (result === null) return new Response(null, { status: 400 });
-  if (!result.ok) {
-    return new Response(null, { status: failureStatus[result.reason] });
-  }
+  if (result === null) return fail("bad_request", 400);
+  if (!result.ok) return fail(result.reason, failureStatus[result.reason]);
   return Response.json(getSession(id));
 };
