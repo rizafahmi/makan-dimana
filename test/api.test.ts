@@ -12,6 +12,13 @@ after(async () => {
   await server.stop();
 });
 
+test("GET /api/sessions returns an empty array for a fresh database", async () => {
+  const res = await fetch(`${server.origin}/api/sessions`);
+  assert.equal(res.status, 200);
+  assert.match(String(res.headers.get("content-type")), /application\/json/);
+  assert.deepEqual(await res.json(), []);
+});
+
 test("GET /api/sessions/[id] returns the session row as JSON", async () => {
   const path = await seedSession(server.origin, { title: "Sesi API" });
   const id = path.split("/").pop();
@@ -45,5 +52,17 @@ test("GET /api/sessions/[id] returns 404 for unknown and malformed ids", async (
     const res = await fetch(`${server.origin}/api/sessions/${id}`);
     assert.equal(res.status, 404, `expected 404 for ${id}`);
   }
+});
+
+test("GET /api/sessions returns seeded sessions newest first", async () => {
+  await seedSession(server.origin, { title: "Sesi lama" });
+  await seedSession(server.origin, { title: "Sesi baru" });
+
+  const body = await (await fetch(`${server.origin}/api/sessions`)).json();
+  const titles = body.map((session: { title: string }) => session.title);
+
+  assert.ok(titles.indexOf("Sesi baru") < titles.indexOf("Sesi lama"));
+  assert.equal(body[0].place1_name, "Warteg");
+  assert.ok(typeof body[0].created_at === "string");
 });
 
