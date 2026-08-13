@@ -68,8 +68,16 @@ Additions and changes to the table in `PLAN.md`.
   Only `loading` appears in the server-rendered HTML
 - Indonesian copy: `Memuat...` while loading, `Gagal memuat. Periksa koneksi.` with a
   `Coba lagi` button on error, `Sesi tidak ditemukan` for a valid but unknown id
-- The container is `role="status"`; the spinner is CSS and collapses to static text
-  under `@media (prefers-reduced-motion: reduce)`
+- Only the loading, error, missing and notice paragraphs carry `role="status"`. The
+  container must not, or every vote re-announces the whole page to a screen reader
+- The spinner is CSS and collapses to static text under
+  `@media (prefers-reduced-motion: reduce)`
+- A failed mutation surfaces the endpoint's `error` reason as an Indonesian notice and
+  reloads the session, so a rejected vote never looks like a no-op
+- Mutations are serialized: controls are disabled while one is in flight, and focus is
+  restored to the same control after the re-render
+- Every request carries `AbortSignal.timeout`, so a hung connection ends in the error
+  state with a retry rather than a spinner forever
 - Endpoint suites assert over parsed JSON, not HTML substrings
 
 ## Steps

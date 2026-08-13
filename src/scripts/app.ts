@@ -2,6 +2,19 @@ import { listPlaces, winnerView } from "../lib/session.ts";
 import { relativeTime } from "../lib/time.ts";
 
 type Row = { id: string; title: string; is_open: number; created_at: string };
+type State = (state: string, text: string) => void;
+
+const timeout = 10_000;
+const loadingText = "Memuat...";
+const failureText = "Gagal memuat. Periksa koneksi.";
+const missingText = "Sesi tidak ditemukan";
+
+const reasons: Record<string, string> = {
+  closed: "Sesi sudah ditutup",
+  no_such_place: "Permintaan tidak valid",
+  bad_request: "Permintaan tidak valid",
+  not_found: missingText,
+};
 
 const el = (tag: string, text?: string) => {
   const node = document.createElement(tag);
@@ -15,6 +28,12 @@ const button = (label: string, onClick: () => void) => {
   return node;
 };
 
+const status = (text: string) => {
+  const node = el("p", text);
+  node.setAttribute("role", "status");
+  return node;
+};
+
 const clear = (root: HTMLElement) => {
   while (root.firstChild) root.removeChild(root.firstChild);
 };
@@ -22,23 +41,89 @@ const clear = (root: HTMLElement) => {
 const message = (root: HTMLElement, state: string, text: string) => {
   clear(root);
   root.dataset.state = state;
-  root.append(el("p", text));
+  root.append(status(text));
 };
 
-const failure = (root: HTMLElement, retry: () => void) => {
-  message(root, "error", "Gagal memuat. Periksa koneksi.");
-  root.append(button("Coba lagi", retry));
+const request = (url: string, init?: RequestInit) =>
+  fetch(url, { ...init, signal: AbortSignal.timeout(timeout) });
+
+const loader = (
+  root: HTMLElement,
+  url: string,
+  draw: (data: unknown) => void,
+  missing: string | null,
+  onState: State,
+) => {
+  const failed = () => {
+    message(root, "error", failureText);
+    onState("error", failureText);
+    root.append(button("Coba lagi", () => void run()));
+  };
+
+  const run = async () => {
+    message(root, "loading", loadingText);
+    try {
+      const res = await request(url);
+      if (res.status === 404 && missing !== null) {
+        message(root, "missing", missing);
+        return onState("missing", missing);
+      }
+      if (!res.ok) return failed();
+      draw(await res.json());
+    } catch {
+      failed();
+    }
+  };
+
+  return { run, failed };
 };
 
 const mountSession = (root: HTMLElement) => {
   const id = root.dataset.id ?? "";
+  const share = document.querySelector<HTMLElement>("[data-share]");
+  let notice: string | null = null;
+  let pending = false;
 
-  const render = (session: Record<string, unknown>) => {
+  const onState: State = (state, text) => {
+    document.title = text;
+    if (share) share.hidden = state === "missing";
+  };
+
+  function control(label: string, action: string, place: string | null) {
+    const fields: Record<string, string> = { action };
+    if (place !== null) fields.place = place;
+
+    const node = button(label, () => void mutate(fields));
+    node.dataset.action = action;
+    if (place !== null) node.dataset.place = place;
+    return node;
+  }
+
+  function focusKey() {
+    const active = document.activeElement;
+    if (!(active instanceof HTMLElement)) return null;
+    if (active.dataset.action === undefined) return null;
+    return `${active.dataset.action}|${active.dataset.place ?? ""}`;
+  }
+
+  function restore(key: string | null) {
+    if (key === null) return;
+    const [action, place] = key.split("|");
+    const selector =
+      place === ""
+        ? `button[data-action="${action}"]:not([data-place])`
+        : `button[data-action="${action}"][data-place="${place}"]`;
+    root.querySelector<HTMLElement>(selector)?.focus();
+  }
+
+  function draw(data: unknown) {
+    const session = data as Record<string, unknown>;
     clear(root);
     root.dataset.state = "ready";
 
     const title = String(session.title);
     document.title = title;
+    if (share) share.hidden = false;
     root.append(el("h1", title));
 
     const isOpen = session.is_open === 1;
@@ -59,11 +144,8 @@ const mountSession = (root: HTMLElement) => {
       }
       if (isOpen) {
         item.append(
-          button("Naik", () => void mutate({ action: "upvote", place: slot })),
-          button(
-            "Turun",
-            () => void mutate({ action: "downvote", place: slot }),
-          ),
+          control("Naik", "upvote", slot),
+          control("Turun", "downvote", slot),
         );
       }
       list.append(item);
@@ -71,52 +153,68 @@ const mountSession = (root: HTMLElement) => {
     root.append(list);
 
     if (note !== null) root.append(el("p", note));
-
     root.append(
       isOpen
-        ? button("Tutup sesi", () => void mutate({ action: "close" }))
-        : button("Buka lagi", () => void mutate({ action: "reopen" })),
+        ? control("Tutup sesi", "close", null)
+        : control("Buka lagi", "reopen", null),
     );
-  };
-
-  const load = async () => {
-    root.dataset.state = "loading";
-    try {
-      const res = await fetch(`/api/sessions/${id}`);
-      if (res.status === 404) {
-        return message(root, "missing", "Sesi tidak ditemukan");
-      }
-      if (!res.ok) return failure(root, () => void load());
-      render(await res.json());
-    } catch {
-      failure(root, () => void load());
+    if (notice !== null) {
+      root.append(status(notice));
+      notice = null;
     }
-  };
+  }
 
-  const mutate = async (fields: Record<string, string>) => {
+  const { run, failed } = loader(
+    root,
+    `/api/sessions/${id}`,
+    draw,
+    missingText,
+    onState,
+  );
+
+  async function mutate(fields: Record<string, string>) {
+    if (pending) return;
+    pending = true;
+
+    const key = focusKey();
     root.dataset.state = "loading";
+    for (const node of root.querySelectorAll("button")) node.disabled = true;
+
     try {
-      const res = await fetch(`/api/sessions/${id}`, {
+      const res = await request(`/api/sessions/${id}`, {
         method: "POST",
         body: new URLSearchParams(fields),
       });
-      if (!res.ok) return void load();
-      render(await res.json());
+      if (res.ok) {
+        draw(await res.json());
+        return restore(key);
+      }
+      const body = (await res.json().catch(() => ({}))) as { error?: string };
+      if (res.status === 404) {
+        message(root, "missing", missingText);
+        return onState("missing", missingText);
+      }
+      notice = reasons[String(body.error)] ?? failureText;
+      await run();
+      restore(key);
     } catch {
-      failure(root, () => void load());
+      failed();
+    } finally {
+      pending = false;
     }
-  };
+  }
 
-  void load();
+  void run();
 };
 
 const mountLanding = (root: HTMLElement) => {
-  const render = (sessions: Row[]) => {
+  const draw = (data: unknown) => {
+    const sessions = data as Row[];
     clear(root);
     root.dataset.state = "ready";
 
     if (sessions.length === 0) {
-      root.append(el("p", "Belum ada sesi."));
+      root.append(status("Belum ada sesi."));
       return;
     }
 
@@ -141,18 +239,8 @@ const mountLanding = (root: HTMLElement) => {
     root.append(list);
   };
 
-  const load = async () => {
-    root.dataset.state = "loading";
-    try {
-      const res = await fetch("/api/sessions");
-      if (!res.ok) return failure(root, () => void load());
-      render(await res.json());
-    } catch {
-      failure(root, () => void load());
-    }
-  };
-
-  void load();
+  const { run } = loader(root, "/api/sessions", draw, null, () => {});
+  void run();
 };
 
 const session = document.querySelector<HTMLElement>("[data-session]");

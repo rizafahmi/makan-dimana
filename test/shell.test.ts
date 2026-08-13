@@ -5,9 +5,9 @@ import { seedSession, startServer } from "./harness.ts";
 let server: Awaited<ReturnType<typeof startServer>>;
 
 const sessionShell =
-  /<div data-session="true" data-id="[0-9a-z]{7}" data-state="loading" role="status"><p>Memuat\.\.\.<\/p><\/div>/;
+  /<div data-session="true" data-id="[0-9a-z]{7}" data-state="loading"><p role="status">Memuat\.\.\.<\/p><\/div>/;
 const landingShell =
-  /<div data-sessions="true" data-state="loading" role="status"><p>Memuat\.\.\.<\/p><\/div>/;
+  /<div data-sessions="true" data-state="loading"><p role="status">Memuat\.\.\.<\/p><\/div>/;
 
 before(async () => {
   server = await startServer();
@@ -74,4 +74,5 @@ test("the detail shell shows the canonical share url and a labelled QR", async (
   assert.ok(html.includes(`${server.origin}${path}`));
   assert.match(html, /<svg/);
   assert.ok(html.includes("Kode QR untuk sesi ini"));
+  assert.match(html, /data-share="true"/);
 });
