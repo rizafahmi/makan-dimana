@@ -7,7 +7,7 @@ import { listPlaces, winningSlots } from "../../lib/session.ts";
 const id = Astro.params.id ?? "";
 const voteActions = ["upvote", "downvote"];
 const allowedPlaces = ["1", "2", "3", "4"];
-const sessionActions = ["close"];
+const sessionActions = ["close", "reopen"];
 const invalidRequest = "Permintaan tidak valid";
 
 let error: string | null = null;
@@ -25,7 +25,7 @@ if (Astro.request.method === "POST") {
   ) {
     error = invalidRequest;
   } else if (sessionActions.includes(action)) {
-    const result = setSessionOpen(id, false);
+    const result = setSessionOpen(id, action === "reopen");
     if (result.ok) return Astro.redirect(`/s/${id}`, 303);
     return new Response(null, { status: 404 });
   } else if (typeof place !== "string" || !allowedPlaces.includes(place)) {

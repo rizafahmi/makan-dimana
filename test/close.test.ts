@@ -71,3 +71,24 @@ test("a closed session marks winners among populated places only", async () => {
   assert.equal(/data-winner="true"/.test(emptyHtml), false);
   assert.ok(emptyHtml.includes("Belum ada pemenang"));
 });
+
+test("reopening restores voting, hides the winner, and is idempotent", async () => {
+  const path = await seedSession(server.origin);
+  await postForm(server.origin, path, { action: "upvote", place: "1" });
+  await postForm(server.origin, path, { action: "close" });
+  const res = await postForm(server.origin, path, { action: "reopen" });
+  assert.equal(res.status, 303);
+  assert.equal(res.headers.get("location"), path);
+  const html = await (await fetch(`${server.origin}${path}`)).text();
+  assert.match(html, /data-place="1"[^>]*data-votes="1"/);
+  assert.equal(/data-winner="true"/.test(html), false);
+  assert.equal(html.includes("Pemenang"), false);
+  assert.match(html, /name="action"[^>]*value="upvote"/);
+  const vote = await postForm(server.origin, path, {
+    action: "upvote",
+    place: "1",
+  });
+  assert.equal(vote.status, 303);
+  const again = await postForm(server.origin, path, { action: "reopen" });
+  assert.equal(again.status, 303);
+});

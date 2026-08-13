@@ -168,7 +168,7 @@ Pin these before writing the first test; the e2e suites hard-code them.
       - Positive tie: mark every tied leader and show `Seri!`
       - All zero: mark no winner and show `Belum ada pemenang`
       Done when: one leader is marked, a tie shows both leaders, all-zero marks none, and NULL slots never participate
-- [ ] Add reopen: form POST calls setSessionOpen(id, true) and redirects with 303
+- [x] Add reopen: form POST calls setSessionOpen(id, true) and redirects with 303
       Done when: reopening restores voting with counts intact, hides winner presentation while open, and reopening again is an idempotent 303
 
 ### 5. Routing edges and polish
