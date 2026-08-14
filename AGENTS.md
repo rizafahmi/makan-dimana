@@ -1,6 +1,6 @@
 # Makan Dimana
 
-A server-rendered Astro app where a group creates a vote session for food places, shares the link, collects votes, and reveals the winner when the session closes.
+A local-first Astro app where a group creates a vote session for food places, shares the link, collects votes, and reveals the winner when the session closes. Every device holds a complete copy of every session it knows and renders from it; the server carries copies between devices and never reads one.
 
 ## Ground rules
 
@@ -9,11 +9,11 @@ Read this section before taking any action.
 * Never create, edit, move, rename, or delete project files. Show me every proposed edit in the chat so I can type it in manually.
 * Never run commands that modify files, install dependencies, or change repository state. Show me the command so I can run it myself.
 * I'm an experienced developer. Do not explain syntax, APIs, programming concepts, or implementation details unless I ask.
-* Routes that load data render their shell on the server and fetch data from the client: `/` and `/s/[id]`. Routes with no data to load stay fully server-rendered: `/new`, `/404`, `/500` - they still carry the shared client entry, which does nothing there.
-* The app requires JavaScript. A deliberate trade on this branch, to make loading state visible.
+* Every route ships a data-free shell. `/` and `/s/[id]` render from IndexedDB in the browser and sync afterwards; `/new` is server-rendered markup the client entry takes over on submit; `/404` and `/500` carry the same entry and it does nothing there.
+* The app requires JavaScript. Every page renders from the local store and creating a session is client-side, so without it `/` and `/s/[id]` stay empty and `/new` posts to a 405.
 * Client rendering builds DOM with `createElement` and `textContent`. Never pass user-supplied text through `innerHTML`.
-* `src/lib/db.ts` and `src/lib/share.ts` are server-only. `id.ts`, `session.ts`, `time.ts` and `validate.ts` are isomorphic. Client code must never import a server-only module.
-* Avoid third-party dependencies. Prefer `node:` builtins and Astro's own APIs. Adding any dependency needs my approval first.
+* `src/lib/db.ts` and `src/lib/share.ts` are server-only. `src/scripts/` is client-only: `app.ts`, `idb.ts` and `sync.ts` never run on the server. The rest of `src/lib` - `id.ts`, `merge.ts`, `session.ts`, `store.ts`, `time.ts`, `validate.ts` - is isomorphic. Client code must never import a server-only module.
+* Avoid third-party dependencies. Prefer `node:` builtins, browser builtins and Astro's own APIs. Adding any dependency needs my approval first.
 * pnpm is the only package manager here. Never run `npm install` or `yarn` - a stray npm install prunes pnpm's tree and desyncs the lockfile.
 * Pin exact versions. `pnpm-workspace.yaml` sets `saveExact: true`, so plain `pnpm add <pkg>` already writes an exact version; no flag to remember.
 * Vanilla CSS only. No Tailwind, no CSS framework, no CSS-in-JS, no UI framework components.
@@ -22,7 +22,7 @@ Read this section before taking any action.
 
 ## Test-driven development
 
-No production code without a failing test first. Features, bug fixes, and behavior changes all qualify. The only exceptions are `astro.config.mjs` and other configuration, and DOM plumbing, which no test in this repo can reach.
+No production code without a failing test first. Features, bug fixes, and behavior changes all qualify. The only exceptions are `astro.config.mjs` and other configuration, and the plumbing no test can reach - `src/scripts/idb.ts` is I/O against IndexedDB and nothing else. Playwright reaches the rest of the client, the service worker included, so "untestable" is a much smaller claim than it used to be.
 
 Because I type every change myself, the loop is:
 
@@ -36,7 +36,7 @@ Never put a test and its implementation in the same message. If a test passes th
 
 ## Stack
 
-Astro 7.2.0 with `@astrojs/node` (`output: 'server'`), TypeScript on Node >= 24, `node:sqlite`, vanilla CSS.
+Astro 7.2.0 with `@astrojs/node` (`output: 'server'`), TypeScript on Node >= 24, `node:sqlite`, vanilla CSS. In the browser: IndexedDB for the local store and a hand-written service worker for the shell.
 
 Node 24 is the floor because both `node:sqlite` and TypeScript type stripping are unflagged there. No CLI flag is needed anywhere - not in the `test` script, not in the server start command.
 
@@ -45,7 +45,7 @@ Node 24 is the floor because both `node:sqlite` and TypeScript type stripping ar
 * `astro dev --background` starts the dev server. Manage it with `astro dev stop`, `astro dev status`, and `astro dev logs`.
 * `pnpm build` produces the production build in `dist/`.
 * `node --test test/db.test.ts` runs one suite with no build. This is the red-green loop.
-* `pnpm test` runs `astro check && astro build && node --test`. Run it before calling any step done. `astro build` only strips types, so `astro check` is what enforces `astro/tsconfigs/strict`. Tests must never touch the default `data/makan.db`.
+* `pnpm test` runs `astro check && astro build`, then `node --test` over `test/*.test.ts`, then `playwright test`. Run it before calling any step done. `astro build` only strips types, so `astro check` is what enforces `astro/tsconfigs/strict`. Tests must never touch the default `data/makan.db`.
 
 ### Test layout
 
@@ -57,8 +57,11 @@ Node 24 is the floor because both `node:sqlite` and TypeScript type stripping ar
 * e2e suites reach the server over HTTP only. Never open the test database directly while the spawned server holds a connection - the `PRAGMA journal_mode` assertion silently no-ops when a second connection is open.
 * No DOM parser is available, so e2e assertions are substring or regex matches over the raw HTML.
 * Endpoint suites assert over parsed JSON rather than HTML substrings.
+* Two browser contexts are two devices. That is what makes convergence testable, and every sync spec is built on it.
 
 ## Database
+
+The database belongs to the relay, not to the app. It holds one opaque document per session per device and never parses one - see `docs/adr/0003-server-is-an-opaque-relay.md`.
 
 * Driver: `node:sqlite` (`DatabaseSync`); no third-party SQLite package
 * File: `MAKAN_DB` env var, default `data/makan.db`. Not committed - `data/` is gitignored and the file is created on first import, so a fresh clone boots with no database
@@ -66,39 +69,45 @@ Node 24 is the floor because both `node:sqlite` and TypeScript type stripping ar
 * Assert it immediately after opening with `PRAGMA journal_mode = DELETE` and throw when the result is not `delete`. The pragma silently no-ops if another connection is open
 * Hold one connection as a `globalThis` singleton so dev HMR cannot open concurrent connections
 * Create the directory and the schema idempotently on first import of the db module with `CREATE TABLE IF NOT EXISTS`
+* Two statements, both blind. Every row has exactly one writer, so `putDoc` is an `INSERT OR REPLACE` with no merge, no compare-and-set and no conflict handling, and `listDocs` hands back a session's document strings in no promised order
 
 ## Data Model
 
-vote_sessions:
-- id, 7-char Crockford Base32 lowercase (0-9, a-z minus i/l/o/u), UNIQUE,
-  retry on collision, case-insensitive lookup normalized to canonical lowercase
-- title, non-empty
-- is_open, default 1, CHECK IN (0, 1)
-- place1_name, non-empty
-- place1_votes, default 0, CHECK >= 0
-- place2_name, non-empty
-- place2_votes, default 0, CHECK >= 0
-- place3_name, nullable, CHECK NULL or non-empty
-- place3_votes, default 0, CHECK >= 0
-- place4_name, nullable, CHECK NULL or non-empty
-- place4_votes, default 0, CHECK >= 0
-- created_at, `datetime('now')`, UTC, used for ordering and rendered on the landing list as Indonesian relative time. Relative time is the difference between two UTC instants, so no timezone conversion exists anywhere in the app
+session_docs:
+- session_id, 7-char Crockford Base32 lowercase (0-9, a-z minus i/l/o/u). The device mints it with `crypto.getRandomValues`, so there is no collision retry; both handlers normalize a lookalike typo to the canonical id before touching the store
+- device_id, the id a device gave itself. The server takes its word for it
+- doc, that device's document as a string, stored verbatim and never parsed
+- updated_at, `datetime('now')`, UTC, written and never read. It is there for a human looking at the file
+- PRIMARY KEY (session_id, device_id)
 
-An unused optional place slot is NULL, never `''`. Every guard that skips, blocks voting on, or excludes a slot from the winner tests `IS NOT NULL`, and the CHECK constraints make the empty string unrepresentable.
+A document is the client's shape, not the database's, and `src/lib/merge.ts` owns it: `device`, `title`, `places`, `created_at`, `closed`, and the sparse `up` and `down` PN counters keyed by slot. Only the creator's document carries a title, places and a `created_at`; on every other document all three are null.
+
+`mergeDocs` folds a pile of documents into the row shape the views read - `title`, `is_open`, `place1_name` through `place4_name` with unused slots null, `place1_votes` through `place4_votes`, and `created_at` - or null when no document claims a title, which is how a session this device does not hold reads as missing. Identity comes from the document with a title, and the lower device id wins a tie.
+
+An unused optional place slot is null, never `''`. `validateCreate` drops empty place names before `creatorDoc` is reached, and every guard that skips a slot, blocks voting on it or excludes it from the winner tests for null.
+
+A tally is the sum of every `up` minus every `down`, unclamped and possibly negative - see `docs/adr/0006-tallies-can-be-negative.md`. `closed` is monotonic: any document closing a session closes it everywhere, forever, and there is no reopen - see `docs/adr/0004-closing-is-permanent.md`.
+
+`created_at` is UTC in `datetime('now')` shape and is rendered on the landing list as Indonesian relative time. Relative time is the difference between two UTC instants, so no timezone conversion exists anywhere in the app.
 
 `CREATE TABLE IF NOT EXISTS` never upgrades an existing file, so a schema change means deleting your local `data/makan.db` and letting it be recreated.
 
 ## Where To Look
 
-* `PLAN.md` - the build order, plus decisions, non-goals, HTTP behavior, and session id handling. Read the relevant step before implementing anything.
-* `docs/talk.md` - why this repo exists and why v2 is deliberately worse than v1. Read it before proposing an improvement to the baseline.
-* `docs/plan-v2.md` - the v2 build order. `PLAN.md` is the closed v1 record; v2 contradicts a few of its decisions and says so.
-* `docs/adr/` - decisions a reader will otherwise try to "fix": no service worker, and v2 requiring JavaScript.
-* `src/lib/db.ts` - connection, schema, and session queries. Authoritative for the schema once it exists; keep it and the data model above in sync.
-* `src/pages/` - routes. `/` is the landing page and public session list, `/new` creates a session, `/s/[id]` votes and shows the winner.
-* `src/lib/` - domain logic, so closed-session and missing-slot behavior is unit-testable before the routes that expose it exist. Pages stay thin wrappers that map results to status codes.
+* `docs/plan-v3.md` - this branch: what local-first means here, the document shape, the merge, HTTP behavior, the build order and the conventions the client follows. Read the relevant step before implementing anything.
+* `PLAN.md` and `docs/plan-v2.md` - the closed v1 and v2 records. Accurate about what they built; v3 contradicts a few of their decisions and says which ones.
+* `docs/talk.md` - why this repo exists and what each branch is for. Read it before proposing an improvement to a baseline.
+* `docs/adr/` - seven decisions a reader will otherwise try to "fix", including the opaque relay, permanent closing, the local landing list and negative tallies. `0001` and `0002` are about v2 and are superseded here, not wrong.
+* `CONTEXT.md` - the domain language. Use these words in code, copy and tests.
+* `src/lib/merge.ts` - the document shape, the four transforms that produce a device's next document, and the merge that reads a pile of them. Authoritative for what a document is.
+* `src/lib/store.ts` - the pure half of the local store: replace or append a device's document, hand a device its own, build the local list, and decide what a pull changed.
+* `src/lib/db.ts` - the relay's one table and its two statements. Authoritative for the schema; keep it and the data model above in sync.
+* `src/lib/` - domain logic, so merge, closed-session and missing-slot behavior is unit-testable before the routes and the client that expose it exist. Pages stay thin wrappers that map results to status codes.
+* `src/pages/` - routes. `/` is this device's session list, `/new` creates one in the browser, `/s/[id]` votes and shows the winner, and `/api/sessions/[id]` is the relay.
 * `src/layouts/Base.astro` and `src/styles/global.css` - the shared shell and the single stylesheet. Every page uses them from its first commit.
-* `src/scripts/app.ts` - the only client entry, loaded from `Base.astro`. It renders `/` and `/s/[id]` from the JSON endpoints and owns every loading, error and empty state.
+* `src/scripts/app.ts` - the only client entry, loaded from `Base.astro`. It renders `/` and `/s/[id]` from IndexedDB, answers the create form, and owns the empty and missing states. There is no loading state and no error state to own.
+* `src/scripts/idb.ts` and `src/scripts/sync.ts` - client-only plumbing: IndexedDB I/O and the relay round trip with its triggers. Neither decides anything; a decision belongs in `src/lib/store.ts`.
+* `public/sw.js` - the service worker. Hand-written, precaches the shell, never touches `/api/**`. Bump its `version` constant after changing anything the shell ships.
 * `data/makan.db` - the local SQLite file. Gitignored, created on first import.
 * `README.md` - project overview and commands for humans. `AGENTS.md` wins on any conflict.
 * Astro docs: [routing and middleware](https://docs.astro.build/en/guides/routing/), [components](https://docs.astro.build/en/basics/astro-components/). Full docs: https://docs.astro.build

@@ -344,14 +344,24 @@ a temporary server-side create would be code written only to be deleted.
 - [x] Sync on load, `online` and `visibilitychange`. The session page syncs its own
       session and the landing page fans out over every session it holds. Both paint
       from the store before the first request leaves, which is the whole point of
-      the branch and is pinned by a spec that holds the relay open
+      the branch and is pinned by a spec that holds the relay open. A follow-up
+      narrowed the session's repaint to a sync that landed something, which is what
+      keeps a background sync off the user's focus, flash and taps
 - [x] The service worker precaches the shell, and one cached shell learns to serve any
       session: the client takes the id from the path and drops a QR that was rendered
       for a different one
-- [ ] Delete dead code; update `AGENTS.md`, `README.md`, `PLAN.md` and `docs/talk.md`.
-      `docs/talk.md` still lists no branch past `2-ssr-csr`, and its demo advice -
-      throttle rather than go offline, because there is no service worker - is true of
-      v2 and wrong here
+- [x] Delete dead code; update `AGENTS.md`, `README.md` and `docs/talk.md`. `PLAN.md`
+      and `docs/plan-v2.md` are left exactly as they are - a closed record is not made
+      wrong by being superseded, and this file is where the contradictions get written
+      down - which is a correction to what this step originally said. What went: the
+      CSS for the in-flight disabled state, unreachable since `/s/[id]` started
+      rendering from the store; a `.km-input::placeholder` rule that never had a match;
+      the smoke suite `shell.test.ts` already proves; and `playwright` as a direct
+      dependency, which nothing imports and `@playwright/test` already brings.
+      `docs/talk.md` gains `3-improve-design` and `4-local-first`, sends the demo
+      offline here rather than throttled, and now states the whole-branch exception to
+      its own every-step-fails-visibly rule. `AGENTS.md`'s data model was still
+      `vote_sessions` column by column
 
 ## Manual checks
 

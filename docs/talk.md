@@ -9,6 +9,15 @@ from a cloud-first web app to a local-first one, one architectural change at a t
 - `2-ssr-csr` - v2, and the branch the talk actually opens with. Same app, same
   database, but `/` and `/s/[id]` ship a shell and load their data over the network
   so the dependency is visible. Documented by `docs/plan-v2.md`.
+- `3-improve-design` - v2's architecture with a design that survives a projector: one
+  ground and one accent, self-hosted display type, the winner promoted onto a hero
+  plate, and the whole place row as the vote target. Nothing about where the data
+  lives changes here, so the local-first diff is never competing with a restyle.
+- `4-local-first` - v3, where the data moves onto the device. IndexedDB is the source
+  of truth and every page renders from it, the server becomes an opaque relay that
+  stores one document per device and never parses one, merging is a pure function on
+  the client, and a service worker precaches the shell. Documented by
+  `docs/plan-v3.md`.
 
 Each branch builds on the one above it, so the diff between two adjacent branches is
 the unit the talk works in.
@@ -31,10 +40,28 @@ has something to be measured against.
   are close, pick the one that makes the diff to the next branch smaller and more
   legible, even when the other is better production code.
 - **Every step must fail visibly before the next one fixes it.** A step that quietly
-  works teaches nothing. v2's spinner spinning is the content.
+  works teaches nothing. v2's spinner spinning is the content. `4-local-first` is the
+  single exception and a deliberate one: it is presented as a whole-branch diff rather
+  than a sequence of visible failures, because its intermediate states - a relay no
+  client can write to yet, a client creating sessions the server cannot serve - fail in
+  ways that teach nothing about local-first, and a temporary server-side create would
+  be code written only to be deleted. `docs/plan-v3.md` records it as a decision.
 
 ## Demoing it
 
-Throttle the connection in DevTools rather than going offline. v2 has no service worker,
-so a dead connection produces the browser's own error page and none of the app's - see
-`docs/adr/0001-no-service-worker-in-v2.md`.
+Which failure to stage depends on the branch.
+
+- `1-naive`, `2-ssr-csr` and `3-improve-design`: throttle the connection in DevTools
+  rather than going offline. None of them has a service worker, so a dead connection
+  produces the browser's own error page and none of the app's - see
+  `docs/adr/0001-no-service-worker-in-v2.md`. On the two client-rendered branches the
+  throttle is the demo: the spinner spins, and every vote costs a round trip.
+- `4-local-first`: tick Offline instead, because there is now something to see. The
+  service worker serves the shell and IndexedDB serves the data, so the app loads,
+  renders, votes and closes with nothing on the wire. Two browser windows are two
+  devices: vote offline in both, come back online, and the tallies combine.
+  `docs/plan-v3.md`'s "Manual checks" is the shortlist worth rehearsing beforehand.
+
+One thing not to promise on stage: the QR is rendered by the server, so offline the
+share block shows the URL as text. That is by design - an offline QR cannot resolve a
+scan - but it is a surprise if you meant to scan one on camera.
