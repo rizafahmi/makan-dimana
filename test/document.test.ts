@@ -57,3 +57,13 @@ test("a cancelling vote increments the slot's down counter", () => {
     down: { "1": 2 },
   });
 });
+
+test("applying a vote leaves the document it was given untouched", () => {
+  const before = { ...emptyDoc("a3f1"), up: { "1": 1 }, down: { "2": 1 } };
+
+  applyVote(before, 1, 1);
+  applyVote(before, 2, -1);
+
+  assert.deepEqual(before.up, { "1": 1 });
+  assert.deepEqual(before.down, { "2": 1 });
+});
