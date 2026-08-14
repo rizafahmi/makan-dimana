@@ -50,7 +50,11 @@ Merging is a pure function on the client.
   shipped without one, not a rule this branch has to keep
 - The QR stays server-only and online-only. Offline the share block shows URL text.
   An offline QR cannot resolve a scan, so it is not worth a client-side bundle
-- Sync fires on load, `online` and `visibilitychange`. No polling, no sync control
+- Sync fires on load, on `online`, and on a server-sent event saying that session
+  changed. No polling, no sync control - see
+  `docs/adr/0008-changes-arrive-over-an-event-stream.md`. `visibilitychange` is gone:
+  it only ever fired when a device came back to a tab, so a phone and a laptop both
+  sitting there visible never learned about each other
 - The UI says nothing about the network. No staleness line, no offline banner, no age
   stamps. An unreachable session reuses `data-state="missing"`
 - Sync bodies stay form-encoded, with `device` carrying this device's id and `doc`
@@ -194,12 +198,20 @@ Replaces the table in `docs/plan-v2.md`.
 | `POST /api/sessions/[id]`, fields `device` and `doc` | 204, stored verbatim |
 | `POST /api/sessions/[id]`, malformed id | 404 |
 | `POST /api/sessions/[id]`, non-form body or a non-string field | 400 |
+| `GET /api/sessions/[id]/events`, malformed id | 404 |
+| `GET /api/sessions/[id]/events` | 200 `text/event-stream`, held open |
 
 A valid but unknown id is 200 with an empty array, not 404: the server cannot know
-whether a session exists, only whether it holds documents for it.
+whether a session exists, only whether it holds documents for it. The stream is the
+same: any valid id is subscribable, because holding nothing for a session is not the
+same as knowing it does not exist.
 
-Both handlers normalize the id before touching the store, so a lookalike-typo link
-reads and writes the same row as the canonical one.
+All three handlers normalize the id before touching the store or the registry, so a
+lookalike-typo link reads, writes and subscribes to the same row as the canonical one.
+
+The stream's frames are `event: ready\ndata: ok` once, on connect; `data: changed`
+whenever a document for that session is written; and a `:` comment line every
+`MAKAN_BEAT` milliseconds, 15000 by default.
 
 ## Conventions
 
@@ -296,6 +308,15 @@ reads and writes the same row as the canonical one.
   gets its own change up before it takes anyone else's down. The reverse order still
   converges, but it publishes every local change a round trip later than it had to.
   A spec asserts the pair of requests, in order
+- Every local write publishes this device's document immediately: `vote` and `close`
+  both go through `change`, which writes to IndexedDB and then fires `pushDoc` without
+  waiting for it. Before that the only push was a sync's, so a vote sat on the device
+  until the next trigger and the relay had nothing to notify anyone about - a stream
+  is worth nothing if writes do not reach the server that feeds it. The push is fire
+  and forget in both directions: it does not block the repaint, and it swallows its
+  own failure exactly as `exchange` does, because the next sync republishes the same
+  document anyway. It is deliberately not `exchange`: pulling here would repaint a
+  device in the middle of its own tap for no news
 - A pulled document never overwrites this device's own. `mergePulled` skips any
   document carrying this device's id rather than re-applying the device's own copy
   last: the relay's copy can only be older - a vote made since the last push is in
@@ -315,7 +336,7 @@ reads and writes the same row as the canonical one.
   and returns null. Nothing anywhere edits a document array in place - every transform
   returns a new one - so the reference is an answer rather than a coincidence. The
   first version repainted unconditionally, which on the two-device demo fires on every
-  `visibilitychange` and costs three things at once: focus drops to `BODY`, the
+  event the relay sends and costs three things at once: focus drops to `BODY`, the
   just-voted flash goes with it because `draw` clears `voted` on its way out, and a tap
   whose `pointerdown` and `pointerup` straddle the rebuild is swallowed by a button
   that no longer exists
@@ -328,6 +349,14 @@ reads and writes the same row as the canonical one.
   cost one repaint
 - A repaint nobody asked for puts focus back where it was, exactly as a vote's does.
   `vote` and `sync` share one `repaint`: read the focused slot, render, restore it
+- A device is notified of its own writes and nothing filters that out server-side. The
+  relay would have to know whose document it just stored and whose connection each
+  subscriber is, which is state it has no reason to keep. It costs nothing on the
+  client: the pull comes back holding this device's own document, `mergePulled` skips
+  it for carrying this device's id, `applyPulled` returns null and no repaint happens.
+  A spec pins it by voting and watching the just-voted flash and the focus survive the
+  round trip - so the two rules above are what make the self-notification harmless,
+  and breaking either of them shows up as a page that flickers under its own taps
 - The landing list is the exception and repaints on every sync, changed or not. Its
   rows render `relativeTime` and sync is the only thing that ever runs on that page,
   so that repaint is what keeps `baru saja` from still saying so an hour later
@@ -338,10 +367,15 @@ reads and writes the same row as the canonical one.
   fan-out needs no concurrency limit
 - An exchange that throws resolves to no documents. A failure is silent by design:
   nothing on screen, nothing in the console, no retry - the next trigger is the retry
-- `visibilitychange` is listened for on `document`, where it is fired. The real event
-  bubbles to `window` and a synthetic one does not, which is a trap for the spec
-  rather than for the app: headless Chromium keeps every page visible, so the spec
-  dispatches the event instead of backgrounding the tab
+- The session page subscribes to `/api/sessions/[id]/events` and pulls on every
+  `message`. `EventSource` owns the reconnection, so nothing here retries; a stream
+  that will not connect leaves an app that behaves exactly as it does offline, which
+  is to say correctly. The landing page subscribes to nothing - see
+  `docs/adr/0008-changes-arrive-over-an-event-stream.md`
+- A spec that wants a sync without a stream event dispatches `online` on `window`,
+  where it is listened for. It stands in for the trigger that is hard to stage rather
+  than for a real network transition, the way the `visibilitychange` dispatch it
+  replaced did
 - Browser suites are `test/*.spec.ts` under `@playwright/test`; everything else stays
   `test/*.test.ts` under `node --test`. Two browser contexts are two devices, which
   is what makes convergence testable at all
@@ -399,9 +433,17 @@ a temporary server-side create would be code written only to be deleted.
       offline here rather than throttled, and now states the whole-branch exception to
       its own every-step-fails-visibly rule. `AGENTS.md`'s data model was still
       `vote_sessions` column by column
+- [x] A local write publishes at once, and the relay grows an event stream the session
+      page subscribes to. A real two-device run found the branch had no live path at
+      all in either direction: nothing pushed on a vote, and nothing pulled while a tab
+      stayed visible. `visibilitychange` goes with it, so the trigger list is load,
+      `online` and the stream. Written after the branch was already presented, which is
+      why it is a step of its own rather than a correction to the sync step above
 
 ## Manual checks
 
+- Open one session on two devices, vote on one, and confirm the other moves without
+  being touched - no reload, no tab switch, no tap
 - Load `/`, tick Offline in DevTools, reload, and confirm the list and a session both
   render
 - Vote offline on two devices, reconnect both, and confirm the tallies combine

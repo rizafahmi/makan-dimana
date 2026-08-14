@@ -12,7 +12,7 @@ Read this section before taking any action.
 * Every route ships a data-free shell. `/` and `/s/[id]` render from IndexedDB in the browser and sync afterwards; `/new` is server-rendered markup the client entry takes over on submit; `/404` and `/500` carry the same entry and it does nothing there.
 * The app requires JavaScript. Every page renders from the local store and creating a session is client-side, so without it `/` and `/s/[id]` stay empty and `/new` posts to a 405.
 * Client rendering builds DOM with `createElement` and `textContent`. Never pass user-supplied text through `innerHTML`.
-* `src/lib/db.ts` and `src/lib/share.ts` are server-only. `src/scripts/` is client-only: `app.ts`, `idb.ts` and `sync.ts` never run on the server. The rest of `src/lib` - `id.ts`, `merge.ts`, `session.ts`, `store.ts`, `time.ts`, `validate.ts` - is isomorphic. Client code must never import a server-only module.
+* `src/lib/db.ts`, `src/lib/relay.ts` and `src/lib/share.ts` are server-only. `src/scripts/` is client-only: `app.ts`, `idb.ts` and `sync.ts` never run on the server. The rest of `src/lib` - `id.ts`, `merge.ts`, `session.ts`, `store.ts`, `time.ts`, `validate.ts` - is isomorphic. Client code must never import a server-only module.
 * Avoid third-party dependencies. Prefer `node:` builtins, browser builtins and Astro's own APIs. Adding any dependency needs my approval first.
 * pnpm is the only package manager here. Never run `npm install` or `yarn` - a stray npm install prunes pnpm's tree and desyncs the lockfile.
 * Pin exact versions. `pnpm-workspace.yaml` sets `saveExact: true`, so plain `pnpm add <pkg>` already writes an exact version; no flag to remember.
@@ -57,6 +57,8 @@ Node 24 is the floor because both `node:sqlite` and TypeScript type stripping ar
 * e2e suites reach the server over HTTP only. Never open the test database directly while the spawned server holds a connection - the `PRAGMA journal_mode` assertion silently no-ops when a second connection is open.
 * No DOM parser is available, so e2e assertions are substring or regex matches over the raw HTML.
 * Endpoint suites assert over parsed JSON rather than HTML substrings.
+* `startServer` takes env overrides for the spawned process. `test/events.test.ts` passes `MAKAN_BEAT` so the stream's keep-alive is observable in a test rather than fifteen seconds away.
+* A stream never ends, so every read of one races a timer. Assert on what has arrived so far and cancel the reader when done; an uncancelled one holds the suite open.
 * Two browser contexts are two devices. That is what makes convergence testable, and every sync spec is built on it.
 
 ## Database
@@ -97,16 +99,17 @@ A tally is the sum of every `up` minus every `down`, unclamped and possibly nega
 * `docs/plan-v3.md` - this branch: what local-first means here, the document shape, the merge, HTTP behavior, the build order and the conventions the client follows. Read the relevant step before implementing anything.
 * `PLAN.md` and `docs/plan-v2.md` - the closed v1 and v2 records. Accurate about what they built; v3 contradicts a few of their decisions and says which ones.
 * `docs/talk.md` - why this repo exists and what each branch is for. Read it before proposing an improvement to a baseline.
-* `docs/adr/` - seven decisions a reader will otherwise try to "fix", including the opaque relay, permanent closing, the local landing list and negative tallies. `0001` and `0002` are about v2 and are superseded here, not wrong.
+* `docs/adr/` - eight decisions a reader will otherwise try to "fix", including the opaque relay, permanent closing, the local landing list, negative tallies and the event stream. `0001` and `0002` are about v2 and are superseded here, not wrong.
 * `CONTEXT.md` - the domain language. Use these words in code, copy and tests.
 * `src/lib/merge.ts` - the document shape, the four transforms that produce a device's next document, and the merge that reads a pile of them. Authoritative for what a document is.
 * `src/lib/store.ts` - the pure half of the local store: replace or append a device's document, hand a device its own, build the local list, and decide what a pull changed.
 * `src/lib/db.ts` - the relay's one table and its two statements. Authoritative for the schema; keep it and the data model above in sync.
+* `src/lib/relay.ts` - the in-memory registry of who is listening to which session. It carries no payload and never sees a document; a publish says only that a session was written.
 * `src/lib/` - domain logic, so merge, closed-session and missing-slot behavior is unit-testable before the routes and the client that expose it exist. Pages stay thin wrappers that map results to status codes.
-* `src/pages/` - routes. `/` is this device's session list, `/new` creates one in the browser, `/s/[id]` votes and shows the winner, and `/api/sessions/[id]` is the relay.
+* `src/pages/` - routes. `/` is this device's session list, `/new` creates one in the browser, `/s/[id]` votes and shows the winner, `/api/sessions/[id]` is the relay, and `/api/sessions/[id]/events` is the stream that says when it changed.
 * `src/layouts/Base.astro` and `src/styles/global.css` - the shared shell and the single stylesheet. Every page uses them from its first commit.
 * `src/scripts/app.ts` - the only client entry, loaded from `Base.astro`. It renders `/` and `/s/[id]` from IndexedDB, answers the create form, and owns the empty and missing states. There is no loading state and no error state to own.
-* `src/scripts/idb.ts` and `src/scripts/sync.ts` - client-only plumbing: IndexedDB I/O and the relay round trip with its triggers. Neither decides anything; a decision belongs in `src/lib/store.ts`.
+* `src/scripts/idb.ts` and `src/scripts/sync.ts` - client-only plumbing: IndexedDB I/O, the relay round trip, the push that follows every local write, and the triggers - load, `online` and the session's event stream. Neither decides anything; a decision belongs in `src/lib/store.ts`.
 * `public/sw.js` - the service worker. Hand-written, precaches the shell, never touches `/api/**`. Bump its `version` constant after changing anything the shell ships.
 * `data/makan.db` - the local SQLite file. Gitignored, created on first import.
 * `README.md` - project overview and commands for humans. `AGENTS.md` wins on any conflict.

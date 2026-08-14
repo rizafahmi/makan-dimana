@@ -30,7 +30,9 @@ Running the tests does. The browser suites drive a real Chromium through Playwri
 │   ├── lib/            # db.ts, merge.ts, store.ts and the isomorphic helpers
 │   ├── pages/
 │   │   ├── api/
-│   │   │   └── sessions/[id].ts
+│   │   │   └── sessions/
+│   │   │       ├── [id].ts
+│   │   │       └── [id]/events.ts
 │   │   ├── index.astro
 │   │   ├── new.astro
 │   │   └── s/[id].astro
@@ -44,7 +46,7 @@ Running the tests does. The browser suites drive a real Chromium through Playwri
 
 `/` lists the sessions this device created or opened, `/new` creates one, and `/s/[id]` is the share link where people vote and the winner appears. There is no list of everyone's sessions: a link is the only way in, and following one is what adds a session to your list.
 
-Every page is rendered on demand by `@astrojs/node` and ships no session data. The data comes from IndexedDB in the browser, so nothing on screen is waiting on a request, and there is no UI framework. `/api/sessions/[id]` is an opaque relay: it stores one document per session per device, hands them all back on request, and never parses one. Combining them into a session is a pure function that runs on the client.
+Every page is rendered on demand by `@astrojs/node` and ships no session data. The data comes from IndexedDB in the browser, so nothing on screen is waiting on a request, and there is no UI framework. `/api/sessions/[id]` is an opaque relay: it stores one document per session per device, hands them all back on request, and never parses one. Combining them into a session is a pure function that runs on the client. `/api/sessions/[id]/events` holds a stream open and says when that session changed, without saying what changed - a device votes, publishes, and every other device open on that session pulls and repaints on its own.
 
 The service worker in `public/sw.js` precaches the shell, so with the network gone the app still loads, still renders and still takes votes; those votes reach the other devices at the next sync. It caches no data at all and declines `/api/**` outright. Its `version` constant is the cache name and is bumped by hand - after changing anything the shell ships, bump it or unregister the worker, `astro dev` included.
 
