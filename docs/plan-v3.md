@@ -154,7 +154,7 @@ Replaces the table in `docs/plan-v2.md`.
 | `GET /new` | 200 shell; the form is handled entirely by the client |
 | `POST /new` | 405. Creating is client-side |
 | `GET /s/[id]`, malformed id | 404 from the page |
-| `GET /s/[id]`, any valid id | 200 shell, no session data |
+| `GET /s/[id]`, any valid id | 200 shell, no session data, no loading state |
 | `GET /api/sessions` | 404. The route is deleted |
 | `GET /api/sessions/[id]`, malformed id | 404 |
 | `GET /api/sessions/[id]`, id the server holds nothing for | 200, empty array |
@@ -199,7 +199,10 @@ reads and writes the same row as the canonical one.
   `LIMIT 20` does not come across - it existed to bound a list of everyone's sessions,
   and this one is only ever this device's
 - `data-state` goes straight to `ready`. `loading`, `error` and the retry button are
-  gone; `missing` remains and now also covers a session this device does not hold
+  gone; `missing` remains and now also covers a session this device does not hold.
+  The shell therefore ships its container empty and carries no `data-state` at all:
+  reading IndexedDB is asynchronous, so a `Memuat...` in the markup would flash for
+  about a millisecond, and a spinner that never survives a frame is worse than nothing
 - Visiting a valid `/s/[id]` writes an empty stored record for that id, even when the
   device holds no documents for it. ADR 0005 makes links the only index, so a device
   that opens a shared link offline and closes the tab would otherwise lose that session
@@ -242,7 +245,12 @@ a temporary server-side create would be code written only to be deleted.
       write locally. Planned as two steps and done as one, in that order: neither is
       observable alone, because nothing populates the store until creating is
       client-side, and nothing shows what create wrote until the session page reads it
-- [ ] `/` renders the local list; `GET /api/sessions` is deleted
+- [x] `/` renders the local list; `GET /api/sessions` is deleted. The route itself went
+      with the relay step, so what landed here is the client half: `mountLanding` reads
+      every stored session and runs `localList` over it, and `loader`, `request`, the
+      retry button and the loading and error copy are all deleted with it. Both shells
+      ship their container empty in the same commit, because the only thing still
+      putting `Memuat...` on screen was markup describing a fetch that no longer happens
 - [ ] Sync on load, `online` and `visibilitychange`
 - [ ] The service worker precaches the shell
 - [ ] Delete dead code; update `AGENTS.md`, `README.md`, `PLAN.md` and `docs/talk.md`
