@@ -51,6 +51,37 @@ test("a vote survives a reload, with no server in it", async ({ page }) => {
   expect(calls).toEqual([]);
 });
 
+test("the flash lands on the row just voted, and only while it is fresh", async ({
+  page,
+}) => {
+  await createSession(page, "Makan pagi tim");
+  const warteg = () =>
+    page.locator("button.km-place", { hasText: "Warteg Bahari" });
+  const padang = () =>
+    page.locator("button.km-place", { hasText: "Nasi Padang" });
+
+  await warteg().click();
+
+  await expect(warteg()).toHaveAttribute("data-voted", "true");
+  await expect(padang()).not.toHaveAttribute("data-voted");
+
+  await padang().click();
+
+  await expect(padang()).toHaveAttribute("data-voted", "true");
+  await expect(warteg()).not.toHaveAttribute("data-voted");
+});
+
+test("focus survives the re-render a vote causes", async ({ page }) => {
+  await createSession(page, "Makan sore tim");
+  const warteg = () =>
+    page.locator("button.km-place", { hasText: "Warteg Bahari" });
+
+  await warteg().press("Enter");
+
+  await expect(warteg()).toHaveAttribute("data-votes", "1");
+  await expect(warteg()).toBeFocused();
+});
+
 test("a session this device does not hold reads as missing, not as loading", async ({
   page,
 }) => {

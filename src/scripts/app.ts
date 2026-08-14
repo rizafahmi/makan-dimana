@@ -88,6 +88,7 @@ const mountSession = async (root: HTMLElement) => {
 
   const device = await deviceId();
   let stored = (await readSession(id)) ?? { id, docs: [] };
+  let voted: string | null = null;
 
   function placeRow(slot: string) {
     const node = el("button");
@@ -95,6 +96,17 @@ const mountSession = async (root: HTMLElement) => {
     node.dataset.place = slot;
     node.addEventListener("click", () => void vote(Number(slot), 1));
     return node;
+  }
+
+  function focusedPlace() {
+    const active = document.activeElement;
+    if (!(active instanceof HTMLElement)) return null;
+    return active.dataset.place ?? null;
+  }
+
+  function restore(place: string | null) {
+    if (place === null) return;
+    root.querySelector<HTMLElement>(`button[data-place="${place}"]`)?.focus();
   }
 
   function draw(session: Session) {
@@ -168,6 +180,7 @@ const mountSession = async (root: HTMLElement) => {
       row.dataset.place = slot;
       row.dataset.votes = String(place.votes);
       row.dataset.open = open;
+      if (slot === voted) row.dataset.voted = "true";
 
       if (isOpen) {
         const fill = el("span");
@@ -208,7 +221,7 @@ const mountSession = async (root: HTMLElement) => {
       tally.className = "km-tally";
       root.append(tally);
     }
-
+    voted = null;
   }
 
   function render() {
@@ -223,10 +236,13 @@ const mountSession = async (root: HTMLElement) => {
   }
 
   async function vote(slot: number, delta: number) {
+    const focused = focusedPlace();
     const next = applyVote(ownDoc(stored.docs, device), slot, delta);
     stored = { id, docs: upsertDoc(stored.docs, next) };
     await writeSession(stored);
+    voted = String(slot);
     render();
+    restore(focused);
   }
 
   render();
