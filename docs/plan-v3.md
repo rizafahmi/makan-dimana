@@ -205,7 +205,7 @@ a temporary server-side create would be code written only to be deleted.
 - [x] Id generation moves to `id.ts` on `crypto.getRandomValues`
 - [x] `session_docs` replaces `vote_sessions`; `GET` and `POST /api/sessions/[id]`
       become the relay, and the e2e suites are rewritten onto it in the same commit
-- [ ] Playwright and `@playwright/test` are installed and `pnpm test` chains both
+- [x] Playwright and `@playwright/test` are installed and `pnpm test` chains both
       runners
 - [ ] The store port and its IndexedDB adapter, with the device id
 - [ ] `/s/[id]` renders from the local store and votes write locally

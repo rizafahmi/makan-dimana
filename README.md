@@ -4,7 +4,9 @@ Gather food place ideas and vote on them as a group. One person creates a vote s
 
 ## Requirements
 
-Node >= 24.0.0, where both `node:sqlite` and TypeScript type stripping work without a flag. No database server: the app uses `node:sqlite` against a local file at `data/makan.db`, overridable with the `MAKAN_DB` environment variable. The file is gitignored and created on first run, so a fresh clone needs no setup step.
+Node >= 24.0.0, where both `node:sqlite` and TypeScript type stripping work without a flag. No database server: the app uses `node:sqlite` against a local file at `data/makan.db`, overridable with the `MAKAN_DB` environment variable. The file is gitignored and created on first run, so running the app needs no setup step beyond `pnpm install`.
+
+Running the tests does. The browser suites drive a real Chromium through Playwright, which manages its own browser install, so a fresh clone needs `pnpm exec playwright install chromium` once before `pnpm test` will pass. See `docs/adr/0007-browser-automation-for-the-offline-claim.md` for why.
 
 ## Project structure
 
@@ -41,11 +43,12 @@ Every page is rendered on demand by the server through `@astrojs/node`; there is
 | `pnpm dev` | Start the dev server at `localhost:4321` |
 | `pnpm build` | Build to `./dist/` |
 | `pnpm preview` | Preview the production build |
-| `pnpm test` | Typecheck, build, then run the `node:test` suites in `test/` |
+| `pnpm test` | Typecheck, build, then run the `node:test` suites and the Playwright suites in `test/` |
+| `pnpm exec playwright install chromium` | Download the browser the Playwright suites need, once per machine |
 
 pnpm is the package manager; `packageManager` in `package.json` pins the version and `pnpm-workspace.yaml` sets `saveExact: true`, so `pnpm add <pkg>` writes exact versions without a flag.
 
-Every suite is `test/*.test.ts`. Unit suites exercise `src/lib` directly; e2e suites spawn the built server. Both run against a temporary database, so they never touch your local `data/makan.db`.
+`test/*.test.ts` runs under `node --test`: unit suites exercise `src/lib` directly, e2e suites spawn the built server and drive it over HTTP. `test/*.spec.ts` runs under `@playwright/test` and drives a real browser against the built server, which is the only way to reach the service worker, IndexedDB and offline behaviour. Every one of them runs against a temporary database, so they never touch your local `data/makan.db`.
 
 `pnpm test` runs `astro check` first, because `astro build` strips types without checking them.
 

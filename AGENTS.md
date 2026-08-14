@@ -49,8 +49,10 @@ Node 24 is the floor because both `node:sqlite` and TypeScript type stripping ar
 
 ### Test layout
 
-* Every suite is `test/*.test.ts`. Node 24 strips types unconditionally, so unit suites import `src/lib/*.ts` directly with the literal `.ts` extension in the specifier, and e2e suites are the same kind of file.
-* Unit suites exercise `src/lib`; e2e suites spawn the built server and drive it over HTTP.
+* Unit and HTTP e2e suites are `test/*.test.ts` under `node --test`. Node 24 strips types unconditionally, so unit suites import `src/lib/*.ts` directly with the literal `.ts` extension in the specifier, and e2e suites are the same kind of file.
+* Browser suites are `test/*.spec.ts` under `@playwright/test`, Chromium only. `playwright.config.ts` starts the built server on a fixed port against its own temporary database, so `node --test` and `playwright test` never share one. The two runners are kept apart by the `test` script's `test/*.test.ts` glob and the config's `testMatch`; never let either pattern widen to catch the other's files.
+* Unit suites exercise `src/lib`; e2e suites spawn the built server and drive it over HTTP; browser suites are for what neither can reach - the service worker, IndexedDB and offline.
+* `pnpm exec playwright install chromium` is required once per machine before the browser suites run.
 * A unit suite must set `process.env.MAKAN_DB` before the first import of `src/lib/db.ts`, and therefore import it dynamically. The connection opens at module evaluation.
 * e2e suites reach the server over HTTP only. Never open the test database directly while the spawned server holds a connection - the `PRAGMA journal_mode` assertion silently no-ops when a second connection is open.
 * No DOM parser is available, so e2e assertions are substring or regex matches over the raw HTML.
