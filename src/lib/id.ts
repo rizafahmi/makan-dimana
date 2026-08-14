@@ -10,3 +10,11 @@ export const normalizeSessionId = (raw: string) => {
     .replaceAll("o", "0");
   return canonicalId.test(id) ? id : null;
 };
+
+export const generateSessionId = () => {
+  let id = "";
+  for (const byte of crypto.getRandomValues(new Uint8Array(7))) {
+    id += alphabet[byte % 32];
+  }
+  return id;
+};
