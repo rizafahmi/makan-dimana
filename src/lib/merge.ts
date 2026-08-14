@@ -1,4 +1,6 @@
-type Counters = Partial<Record<"1" | "2" | "3" | "4", number>>;
+type Slot = "1" | "2" | "3" | "4";
+
+type Counters = Partial<Record<Slot, number>>;
 
 export type SessionDoc = {
   device: string;
@@ -12,6 +14,11 @@ export type SessionDoc = {
 
 export const mergeDocs = (docs: SessionDoc[]) => {
   const creator = docs[0];
+  const tally = (slot: Slot) =>
+    docs.reduce(
+      (sum, doc) => sum + (doc.up[slot] ?? 0) - (doc.down[slot] ?? 0),
+      0,
+    );
   return {
     title: creator.title,
     created_at: creator.created_at,
@@ -20,9 +27,9 @@ export const mergeDocs = (docs: SessionDoc[]) => {
     place2_name: creator.places?.[1] ?? null,
     place3_name: creator.places?.[2] ?? null,
     place4_name: creator.places?.[3] ?? null,
-    place1_votes: 0,
-    place2_votes: 0,
-    place3_votes: 0,
-    place4_votes: 0,
+    place1_votes: tally("1"),
+    place2_votes: tally("2"),
+    place3_votes: tally("3"),
+    place4_votes: tally("4"),
   };
 };

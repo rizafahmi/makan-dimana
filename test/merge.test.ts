@@ -24,3 +24,29 @@ test("a lone creator document becomes a session row", () => {
   assert.equal(session.place4_name, null);
   assert.equal(session.place1_votes, 0);
 });
+
+test("tallies sum every document's ups minus downs, unclamped", () => {
+  const session = mergeDocs([
+    {
+      device: "a3f1",
+      title: "Makan siang Jumat",
+      places: ["Warteg", "Padang"],
+      created_at: "2026-08-14 03:00:00",
+      closed: false,
+      up: { "1": 2 },
+      down: {},
+    },
+    {
+      device: "b7c2",
+      title: null,
+      places: null,
+      created_at: null,
+      closed: false,
+      up: { "1": 1 },
+      down: { "1": 1, "2": 1 },
+    },
+  ]);
+
+  assert.equal(session.place1_votes, 2);
+  assert.equal(session.place2_votes, -1);
+});
