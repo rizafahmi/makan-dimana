@@ -1,14 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-
-const createSession = async (page: Page, title: string) => {
-  await page.goto("/new");
-  await page.getByLabel("Judul").fill(title);
-  await page.getByLabel("Tempat 1").fill("Warteg Bahari");
-  await page.getByLabel("Tempat 2").fill("Nasi Padang");
-  await page.getByRole("button", { name: "Bikin sesi" }).click();
-  await expect(page).toHaveURL(/\/s\/[0-9a-hjkmnp-tv-z]{7}$/);
-  return new URL(page.url()).pathname;
-};
+import { createSession } from "./browser.ts";
 
 const settle = 1500;
 
@@ -56,7 +47,7 @@ test("two devices each keep the other's vote, and their own", async ({
   const a = await first.newPage();
   const b = await second.newPage();
 
-  const link = await createSession(a, "Makan siang tim");
+  const link = await afterSync(a, () => createSession(a, "Makan siang tim"));
   await warteg(a).click();
   await expect(warteg(a)).toHaveAttribute("data-votes", "1");
   await afterSync(a, () => a.reload());

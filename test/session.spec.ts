@@ -1,18 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-
-const createSession = async (
-  page: Page,
-  title: string,
-  places: string[] = ["Warteg Bahari", "Nasi Padang"],
-) => {
-  await page.goto("/new");
-  await page.getByLabel("Judul").fill(title);
-  for (const [index, place] of places.entries()) {
-    await page.getByLabel(`Tempat ${index + 1}`).fill(place);
-  }
-  await page.getByRole("button", { name: "Bikin sesi" }).click();
-  await expect(page).toHaveURL(/\/s\/[0-9a-hjkmnp-tv-z]{7}$/);
-};
+import { createSession, holdRelay } from "./browser.ts";
 
 const storedIds = (page: Page) =>
   page.evaluate(
@@ -56,7 +43,7 @@ test("a vote survives a reload with the relay refusing every request", async ({
 }) => {
   const complaints: string[] = [];
   page.on("pageerror", (error) => complaints.push(error.message));
-  await page.route("**/api/**", (route) => route.abort());
+  const refuse = await holdRelay(page);
 
   await createSession(page, "Makan malam tim");
   const warteg = () =>
@@ -65,6 +52,7 @@ test("a vote survives a reload with the relay refusing every request", async ({
   await warteg().click();
   await expect(warteg()).toHaveAttribute("data-votes", "1");
 
+  refuse();
   await page.reload();
 
   await expect(warteg()).toHaveAttribute("data-votes", "1");
@@ -75,6 +63,7 @@ test("a vote survives a reload with the relay refusing every request", async ({
 test("the flash lands on the row just voted, and only while it is fresh", async ({
   page,
 }) => {
+  await holdRelay(page);
   await createSession(page, "Makan pagi tim");
   const warteg = () =>
     page.locator("button.km-place", { hasText: "Warteg Bahari" });
@@ -93,6 +82,7 @@ test("the flash lands on the row just voted, and only while it is fresh", async 
 });
 
 test("focus survives the re-render a vote causes", async ({ page }) => {
+  await holdRelay(page);
   await createSession(page, "Makan sore tim");
   const warteg = () =>
     page.locator("button.km-place", { hasText: "Warteg Bahari" });
@@ -106,6 +96,7 @@ test("focus survives the re-render a vote causes", async ({ page }) => {
 test("Shift+click cancels a vote instead of stacking another", async ({
   page,
 }) => {
+  await holdRelay(page);
   await createSession(page, "Makan larut tim");
   const warteg = () =>
     page.locator("button.km-place", { hasText: "Warteg Bahari" });
@@ -123,6 +114,7 @@ test("Shift+click cancels a vote instead of stacking another", async ({
 test("holding a row cancels a vote, and letting go does not add one back", async ({
   page,
 }) => {
+  await holdRelay(page);
   await createSession(page, "Makan tengah malam");
   const warteg = () =>
     page.locator("button.km-place", { hasText: "Warteg Bahari" });
@@ -141,6 +133,7 @@ test("holding a row cancels a vote, and letting go does not add one back", async
 test("closing is one-way: it survives a reload and offers no way back", async ({
   page,
 }) => {
+  await holdRelay(page);
   await createSession(page, "Makan siang Jumat");
   await page.locator("button.km-place", { hasText: "Warteg Bahari" }).click();
 

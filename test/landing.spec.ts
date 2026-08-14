@@ -1,13 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-
-const createSession = async (page: Page, title: string) => {
-  await page.goto("/new");
-  await page.getByLabel("Judul").fill(title);
-  await page.getByLabel("Tempat 1").fill("Warteg Bahari");
-  await page.getByLabel("Tempat 2").fill("Nasi Padang");
-  await page.getByRole("button", { name: "Bikin sesi" }).click();
-  await expect(page).toHaveURL(/\/s\/[0-9a-hjkmnp-tv-z]{7}$/);
-};
+import { createSession, holdRelay } from "./browser.ts";
 
 const pastTheSecondBoundary = 1100;
 
@@ -50,6 +42,7 @@ test("the sessions made on this device are listed newest first, and survive a re
 test("a session closed on its own page is listed as closed, an untouched one as open", async ({
   page,
 }) => {
+  await holdRelay(page);
   await createSession(page, "Makan siang tim");
   await page.getByRole("button", { name: "Tutup sesi" }).click();
   await expect(page.getByText("Sudah ditutup")).toBeVisible();
