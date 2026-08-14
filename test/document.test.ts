@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { creatorDoc, emptyDoc } from "../src/lib/merge.ts";
+import { applyVote, creatorDoc, emptyDoc } from "../src/lib/merge.ts";
 
 test("an empty document holds nothing but its device", () => {
   assert.deepEqual(emptyDoc("a3f1"), {
@@ -32,4 +32,28 @@ test("a creator document carries the session's identity", () => {
       down: {},
     },
   );
+});
+
+test("an up vote increments its own slot and leaves the rest alone", () => {
+  assert.deepEqual(applyVote({ ...emptyDoc("a3f1"), up: { "1": 1, "2": 3 } }, 1, 1), {
+    device: "a3f1",
+    title: null,
+    places: null,
+    created_at: null,
+    closed: false,
+    up: { "1": 2, "2": 3 },
+    down: {},
+  });
+});
+
+test("a cancelling vote increments the slot's down counter", () => {
+  assert.deepEqual(applyVote({ ...emptyDoc("a3f1"), down: { "1": 1 } }, 1, -1), {
+    device: "a3f1",
+    title: null,
+    places: null,
+    created_at: null,
+    closed: false,
+    up: {},
+    down: { "1": 2 },
+  });
 });

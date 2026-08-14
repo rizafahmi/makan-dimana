@@ -29,6 +29,16 @@ export const creatorDoc = (
   createdAt: string,
 ) => ({ ...emptyDoc(device), title, places, created_at: createdAt });
 
+const bump = (counters: Record<string, number | undefined>, slot: number) => ({
+  ...counters,
+  [slot]: (counters[slot] ?? 0) + 1,
+});
+
+export const applyVote = (doc: SessionDoc, slot: number, delta: number) =>
+  delta < 0
+    ? { ...doc, down: bump(doc.down, slot) }
+    : { ...doc, up: bump(doc.up, slot) };
+
 export const mergeDocs = (docs: SessionDoc[]) => {
   const claimants = docs.filter((doc) => doc.title !== null);
   if (claimants.length === 0) return null;
