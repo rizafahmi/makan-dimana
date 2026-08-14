@@ -11,10 +11,14 @@ export const normalizeSessionId = (raw: string) => {
   return canonicalId.test(id) ? id : null;
 };
 
-export const generateSessionId = () => {
+const randomId = (length: number) => {
   let id = "";
-  for (const byte of crypto.getRandomValues(new Uint8Array(7))) {
+  for (const byte of crypto.getRandomValues(new Uint8Array(length))) {
     id += alphabet[byte % 32];
   }
   return id;
 };
+
+export const generateSessionId = () => randomId(7);
+
+export const generateDeviceId = () => randomId(26);

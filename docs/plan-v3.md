@@ -32,6 +32,17 @@ Merging is a pure function on the client.
   convergent-but-wrong rather than divergent
 - Id generation moves from `db.ts` to `id.ts` and from `node:crypto` randomBytes to
   `crypto.getRandomValues`, which Node 24 and every browser both have
+- The client stays inside the API surface a non-secure context exposes. The two-device
+  demo is a phone hitting a laptop over LAN HTTP, and `http://192.168.x.x` is not a
+  secure context - only HTTPS and `localhost` are. `crypto.randomUUID` and
+  `crypto.subtle` both carry `[SecureContext]` in the Web Crypto IDL and are simply
+  absent there, and `navigator.serviceWorker` is absent with them, so the precache
+  registration silently no-ops and the offline story needs HTTPS or `localhost` to be
+  seen at all. `crypto.getRandomValues` carries no such annotation, which is why both
+  generators in `id.ts` use it. The device id was `crypto.randomUUID()` until a real
+  LAN run threw `TypeError: crypto.randomUUID is not a function`; `test/device.spec.ts`
+  deletes both secure-context members before the page loads, so the next reach for one
+  fails in the suite rather than on a phone
 - The service worker precaches the shell and never caches data. The service worker
   serves the app; IndexedDB serves the data. It supersedes
   `docs/adr/0001-no-service-worker-in-v2.md`, which deferred the worker until the
@@ -194,11 +205,19 @@ reads and writes the same row as the canonical one.
 - `src/scripts/sync.ts` is the other plumbing module: `exchange(id, device, own)` is
   the round trip and `keepSynced(run)` is the triggers. Both are client-only and
   neither decides anything - what a pull does to the store is `mergePulled`'s call
-- The device id is `crypto.randomUUID()`, generated once and persisted in IndexedDB's
+- The device id is `generateDeviceId()`, generated once and persisted in IndexedDB's
   `meta` store. Get-or-create stays in the adapter rather than becoming a pure
   function: the only decision in it is a `??`, and persisting the result is its whole
   substance. One read-write transaction covers the read and the write, so two callers
-  racing on a fresh device cannot mint two ids
+  racing on a fresh device cannot mint two ids. A device that already holds one keeps
+  it, whatever shape it is in: the id names that device's rows on the relay, so
+  re-minting would orphan every document it ever pushed
+- `generateDeviceId` reuses the session id's Crockford alphabet and its uniform
+  `byte % 32` mapping - 256 is a multiple of 32, so there is no modulo bias - and takes
+  26 characters, which is 130 bits, against the 122 a v4 uuid carries. A device id
+  never reaches a URL, so length costs nothing and there is no reason to trade entropy
+  for a shorter one. Fixed width over an alphabet that is already in ASCII order makes
+  plain `<` a total order on two ids, which is what `mergeDocs` breaks a creator tie on
 - `localList` orders by `created_at` descending, matching v2's `listSessions`, and
   breaks a tie on the session id, descending. `datetime('now')` has one-second
   resolution, so ties are ordinary rather than exotic. The id carries no time
@@ -370,3 +389,5 @@ a temporary server-side create would be code written only to be deleted.
 - Vote offline on two devices, reconnect both, and confirm the tallies combine
 - Close on one device offline while the other votes, reconnect, and confirm closed wins
 - Confirm the `<noscript>` message still appears with JavaScript disabled
+- Open the app from a second device over LAN HTTP and create a session there, which is
+  the only check that runs outside a secure context

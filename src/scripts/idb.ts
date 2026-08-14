@@ -1,3 +1,4 @@
+import { generateDeviceId } from "../lib/id.ts";
 import type { StoredSession } from "../lib/store.ts";
 
 const sessions = "sessions";
@@ -55,7 +56,7 @@ export const deviceId = async () => {
   const held = await wrap<string | undefined>(store.get(device));
   if (held !== undefined) return held;
 
-  const id = crypto.randomUUID();
+  const id = generateDeviceId();
   store.put(id, device);
   await done(tx);
   return id;
