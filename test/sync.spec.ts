@@ -366,3 +366,28 @@ test("a vote cast while the relay is answering survives the answer", async ({
   await afterSync(page, () => page.reload());
   await expect(warteg(page)).toHaveAttribute("data-votes", "2");
 });
+
+test("a local write is published without waiting for the next sync", async ({
+  page,
+}) => {
+  const link = await afterSync(page, () => createSession(page, "Makan tanggap"));
+  const endpoint = link.replace("/s/", "/api/sessions/");
+
+  const pushes = () =>
+    page.waitForRequest(
+      (request) =>
+        request.method() === "POST" &&
+        new URL(request.url()).pathname === endpoint,
+      { timeout: 5_000 },
+    );
+
+  const voted = pushes();
+  await warteg(page).click();
+  await expect(warteg(page)).toHaveAttribute("data-votes", "1");
+  await voted;
+
+  const closed = pushes();
+  await page.getByRole("button", { name: "Tutup sesi" }).click();
+  await expect(page.getByText("Sudah ditutup")).toBeVisible();
+  await closed;
+});

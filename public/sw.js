@@ -1,4 +1,4 @@
-const version = "makan-shell-v2";
+const version = "makan-shell-v3";
 
 const generic = "/s/0000000";
 
