@@ -93,3 +93,17 @@ test("a session nobody has written to holds no documents", async () => {
 
   assert.deepEqual(listDocs("unkn0wn"), []);
 });
+
+test("every stored document is stamped with the time it was written", async () => {
+  const { db, putDoc } = await import("../src/lib/db.ts");
+
+  putDoc("stamp3d", "a3f1", '{"device":"a3f1"}');
+  const row = db
+    .prepare("SELECT updated_at FROM session_docs WHERE session_id = ?")
+    .get("stamp3d");
+
+  assert.match(
+    String(row?.updated_at),
+    /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/,
+  );
+});
