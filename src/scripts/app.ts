@@ -88,6 +88,7 @@ const mountSession = (root: HTMLElement) => {
   const id = root.dataset.id ?? "";
   const share = document.querySelector<HTMLElement>("[data-share]");
   let notice: string | null = null;
+  let voted: string | null = null;
   let pending = false;
 
   const onState: State = (state, text) => {
@@ -232,6 +233,7 @@ const mountSession = (root: HTMLElement) => {
       row.dataset.place = slot;
       row.dataset.votes = String(place.votes);
       row.dataset.open = open;
+      if (slot === voted) row.dataset.voted = "true";
 
       if (isOpen) {
         const fill = el("span");
@@ -287,6 +289,7 @@ const mountSession = (root: HTMLElement) => {
       root.append(status(notice));
       notice = null;
     }
+    voted = null;
   }
 
   const { run, failed } = loader(
@@ -316,6 +319,7 @@ const mountSession = (root: HTMLElement) => {
         body: new URLSearchParams(fields),
       });
       if (res.ok) {
+        voted = fields.place ?? null;
         draw(await res.json());
         return restore(key);
       }

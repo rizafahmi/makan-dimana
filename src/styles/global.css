@@ -77,7 +77,7 @@
 
   --tap-vote: 52px;
   --control-min-height: 50px;
-  --qr-size: 88px;
+  --qr-size: 160px;
 
   --radius: 2px;
   --border-width: 2px;
@@ -87,6 +87,12 @@
 
   --spin-duration: 0.8s;
   --disabled-opacity: 0.6;
+}
+
+@media (min-width: 40rem) {
+  :root {
+    --qr-size: 200px;
+  }
 }
 
 * {
@@ -505,6 +511,16 @@ button.km-place:disabled {
   cursor: default;
 }
 
+@keyframes km-voted {
+  from {
+    background: color-mix(in oklab, var(--surface) 70%, var(--accent));
+  }
+}
+
+button.km-place[data-voted="true"] {
+  animation: km-voted 1s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
 .km-hint {
   font: var(--weight-body) var(--size-mono-fine)/1.4 var(--font-mono);
   color: var(--faint);
@@ -512,6 +528,7 @@ button.km-place:disabled {
 
 .km-share {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--gap-inline);
 }
@@ -521,6 +538,8 @@ button.km-place:disabled {
 }
 
 .km-share-url {
+  flex: 1 1 12rem;
+  min-width: 0;
   font: var(--weight-body) var(--size-body)/1.4 var(--font-mono);
   color: var(--accent);
   word-break: break-all;
