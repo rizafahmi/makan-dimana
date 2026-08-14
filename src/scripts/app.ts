@@ -1,3 +1,4 @@
+import { generateSessionId } from "../lib/id.ts";
 import { listPlaces, tallyView, winnerView } from "../lib/session.ts";
 import { relativeTime } from "../lib/time.ts";
 import { validateCreate } from "../lib/validate.ts";
@@ -435,8 +436,8 @@ const mountCreate = (form: HTMLFormElement) => {
       title: read("title"),
       places: fieldNames.slice(1).map(read),
     });
-    if (result.ok) return;
-    showErrors(form, result.errors);
+    if (!result.ok) return showErrors(form, result.errors);
+    location.assign(`/s/${generateSessionId()}`);
   });
 };
 

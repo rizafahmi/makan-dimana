@@ -50,6 +50,16 @@ test("every error links to an existing, unique id, however often it is submitted
   expect(new Set(markup.ids).size).toBe(markup.ids.length);
 });
 
+test("a valid form mints a session id and goes there", async ({ page }) => {
+  await page.goto("/new");
+  await page.getByLabel("Judul").fill("Makan siang tim");
+  await page.getByLabel("Tempat 1").fill("Warteg Bahari");
+  await page.getByLabel("Tempat 2").fill("Nasi Padang Sederhana");
+  await page.getByRole("button", { name: "Bikin sesi" }).click();
+
+  await expect(page).toHaveURL(/\/s\/[0-9a-hjkmnp-tv-z]{7}$/);
+});
+
 test("fixing a field drops its error, its mark and its dangling description", async ({
   page,
 }) => {
