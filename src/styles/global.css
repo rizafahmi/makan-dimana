@@ -25,7 +25,7 @@
   --danger-text: oklch(0.72 0.17 28);
 
   --muted: oklch(0.96 0.01 262 / 0.7);
-  --faint: oklch(0.96 0.01 262 / 0.5);
+  --faint: oklch(0.96 0.01 262 / 0.54);
   --hairline: oklch(0.96 0.01 262 / 0.15);
   --tint-text-10: oklch(0.96 0.01 262 / 0.1);
 
@@ -60,7 +60,6 @@
     var(--font-sans);
   --text-machine: var(--weight-body) var(--size-mono-fine)/1.4 var(--font-mono);
 
-  --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
   --space-4: 16px;
@@ -293,6 +292,7 @@ p {
 
 .km-row a {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
   gap: var(--gap-inline);
   text-decoration: none;
@@ -310,6 +310,8 @@ p {
 
 .km-row-title {
   flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
   font: var(--weight-display) var(--size-place)/1.2 var(--font-sans);
   letter-spacing: var(--tracking-display);
 }
@@ -323,12 +325,18 @@ p {
 }
 
 .km-row-time {
-  width: var(--col-timestamp);
+  width: auto;
   flex: none;
   text-align: right;
   white-space: nowrap;
   font: var(--text-machine);
   color: var(--faint);
+}
+
+@media (min-width: 40rem) {
+  .km-row-time {
+    width: var(--col-timestamp);
+  }
 }
 
 .km-row[data-open="1"] a {
@@ -388,6 +396,8 @@ p {
 
 .km-place-name {
   flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
   font: var(--weight-display) var(--size-place)/1.2 var(--font-sans);
   letter-spacing: var(--tracking-display);
 }
@@ -436,6 +446,7 @@ p {
 }
 
 .km-hero-who {
+  overflow-wrap: break-word;
   font: var(--weight-display) var(--size-h1-phone)/var(--leading-display)
     var(--font-sans);
   letter-spacing: var(--tracking-display);
@@ -546,7 +557,7 @@ button.km-place:disabled {
   color: var(--muted);
 }
 
-[data-state="loading"] {
+[data-state="loading"]:has(> p[role="status"]:first-child) {
   opacity: var(--disabled-opacity);
 }
 
@@ -592,5 +603,10 @@ button.km-place:disabled {
 @media (prefers-reduced-motion: reduce) {
   [data-state="loading"] > p[role="status"]:first-child::before {
     animation: none;
+  }
+
+  .km-button,
+  button.km-place {
+    transition: none;
   }
 }

@@ -192,9 +192,11 @@ const mountSession = (root: HTMLElement) => {
       isOpen,
     );
 
-    const summary = el("p", tally.text);
-    summary.className = "km-tally";
-    root.append(summary);
+    if (isOpen) {
+      const summary = el("p", tally.text);
+      summary.className = "km-tally";
+      root.append(summary);
+    }
 
     if (kicker !== null) {
       const hero = el("div");
@@ -257,7 +259,7 @@ const mountSession = (root: HTMLElement) => {
       if (row !== item) item.append(row);
       list.append(item);
     }
-    root.append(list);
+    if (others.length > 0) root.append(list);
 
     if (isOpen) {
       const hint = el("p", hintText);
