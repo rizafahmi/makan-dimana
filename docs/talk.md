@@ -83,8 +83,16 @@ owning a domain.
 
     tailscale up
     pnpm build
-    node dist/server/entry.mjs
+    HOST=127.0.0.1 node dist/server/entry.mjs
     tailscale funnel --bg 4321
+
+`HOST` is not optional and its absence fails confusingly. The adapter defaults to
+`localhost`, Node 17 and later resolve that verbatim, so on macOS the server binds
+`[::1]` - IPv6 loopback - and nothing at all listens on `127.0.0.1`. Funnel dials IPv4,
+gets refused, and answers **502** while `curl localhost:4321` cheerfully returns 200.
+Binding `127.0.0.1` rather than `0.0.0.0` is also deliberate: it makes the app reachable
+*only* through the HTTPS origin, so you cannot accidentally demo over the plain-HTTP LAN
+path where the service worker never registers.
 
 That publishes `https://<machine>.<tailnet>.ts.net`, which is the same address at every
 rehearsal and on the day. `tailscale funnel off` takes it down, and taking it down *is*
