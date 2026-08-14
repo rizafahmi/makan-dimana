@@ -13,7 +13,9 @@ export type SessionDoc = {
 };
 
 export const mergeDocs = (docs: SessionDoc[]) => {
-  const creator = docs[0];
+  const creator = docs
+    .filter((doc) => doc.title !== null)
+    .reduce((lowest, doc) => (doc.device < lowest.device ? doc : lowest));
   const tally = (slot: Slot) =>
     docs.reduce(
       (sum, doc) => sum + (doc.up[slot] ?? 0) - (doc.down[slot] ?? 0),

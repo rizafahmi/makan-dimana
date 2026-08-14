@@ -75,3 +75,30 @@ test("a session is closed when any document closed it", () => {
 
   assert.equal(session.is_open, 0);
 });
+
+test("the lower device id wins when two documents claim a title", () => {
+  const session = mergeDocs([
+    {
+      device: "b7c2",
+      title: "Sesi kedua",
+      places: ["Sate", "Bakso"],
+      created_at: "2026-08-14 04:00:00",
+      closed: false,
+      up: {},
+      down: {},
+    },
+    {
+      device: "a3f1",
+      title: "Sesi pertama",
+      places: ["Warteg", "Padang"],
+      created_at: "2026-08-14 03:00:00",
+      closed: false,
+      up: {},
+      down: {},
+    },
+  ]);
+
+  assert.equal(session.title, "Sesi pertama");
+  assert.equal(session.place1_name, "Warteg");
+  assert.equal(session.created_at, "2026-08-14 03:00:00");
+});
