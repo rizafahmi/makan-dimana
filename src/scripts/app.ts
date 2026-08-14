@@ -273,50 +273,73 @@ const mountSession = async (root: HTMLElement) => {
 };
 
 const mountLanding = async (root: HTMLElement) => {
-  const sessions = localList(await allSessions());
-  root.dataset.state = "ready";
+  const device = await deviceId();
+  let stored = await allSessions();
 
-  if (sessions.length === 0) {
-    root.append(status("Belum ada sesi."));
-    return;
+  function draw() {
+    clear(root);
+    root.dataset.state = "ready";
+
+    const sessions = localList(stored);
+    if (sessions.length === 0) {
+      root.append(status("Belum ada sesi."));
+      return;
+    }
+
+    const head = el("div");
+    head.className = "km-subhead";
+    head.append(el("span", "Sesi"), el("span", `${sessions.length} sesi`));
+
+    const now = new Date();
+    const list = el("ul");
+    list.className = "km-list";
+
+    for (const session of sessions) {
+      const item = el("li");
+      item.className = "km-row";
+      item.dataset.open = String(session.is_open);
+
+      const link = el("a") as HTMLAnchorElement;
+      link.href = `/s/${session.id}`;
+
+      const title = el("span", session.title ?? "");
+      title.className = "km-row-title";
+
+      const state = el(
+        "span",
+        session.is_open === 1 ? "Masih buka" : "Sudah ditutup",
+      );
+      state.className = "km-row-state";
+
+      const created = new Date(
+        `${(session.created_at ?? "").replace(" ", "T")}Z`,
+      );
+      const time = el("span", relativeTime(created, now));
+      time.className = "km-row-time";
+
+      link.append(title, state, time);
+      item.append(link);
+      list.append(item);
+    }
+    root.append(head, list);
   }
 
-  const head = el("div");
-  head.className = "km-subhead";
-  head.append(el("span", "Sesi"), el("span", `${sessions.length} sesi`));
-
-  const now = new Date();
-  const list = el("ul");
-  list.className = "km-list";
-
-  for (const session of sessions) {
-    const item = el("li");
-    item.className = "km-row";
-    item.dataset.open = String(session.is_open);
-
-    const link = el("a") as HTMLAnchorElement;
-    link.href = `/s/${session.id}`;
-
-    const title = el("span", session.title ?? "");
-    title.className = "km-row-title";
-
-    const state = el(
-      "span",
-      session.is_open === 1 ? "Masih buka" : "Sudah ditutup",
+  async function sync() {
+    const pulled = await Promise.all(
+      stored.map((session) =>
+        exchange(session.id, device, ownDoc(session.docs, device)),
+      ),
     );
-    state.className = "km-row-state";
-
-    const created = new Date(
-      `${(session.created_at ?? "").replace(" ", "T")}Z`,
-    );
-    const time = el("span", relativeTime(created, now));
-    time.className = "km-row-time";
-
-    link.append(title, state, time);
-    item.append(link);
-    list.append(item);
+    stored = stored.map((session, index) => ({
+      id: session.id,
+      docs: mergePulled(session.docs, pulled[index], device),
+    }));
+    await Promise.all(stored.map(writeSession));
+    draw();
   }
-  root.append(head, list);
+
+  draw();
+  keepSynced(() => void sync());
 };
 
 const fieldNames = ["title", "place1", "place2", "place3", "place4"];

@@ -65,13 +65,13 @@ test("a session closed on its own page is listed as closed, an untouched one as 
   await expect(open.locator(".km-row-state")).toHaveText("Masih buka");
 });
 
-test("the list renders with every data request refused, and asks for none", async ({
+test("the list renders with every data request refused, and says nothing about it", async ({
   page,
 }) => {
   await createSession(page, "Makan siang tim");
 
-  const asked: string[] = [];
-  page.on("request", (request) => asked.push(request.url()));
+  const complaints: string[] = [];
+  page.on("pageerror", (error) => complaints.push(error.message));
   await page.route("**/*", (route) =>
     ["fetch", "xhr"].includes(route.request().resourceType())
       ? route.abort()
@@ -81,5 +81,5 @@ test("the list renders with every data request refused, and asks for none", asyn
   await page.goto("/");
 
   await expect(titles(page)).toHaveText(["Makan siang tim"]);
-  expect(asked.filter((url) => url.includes("/api/"))).toEqual([]);
+  expect(complaints).toEqual([]);
 });

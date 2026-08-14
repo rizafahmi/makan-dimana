@@ -126,3 +126,31 @@ test("coming back to the tab picks up what changed, with no reload", async ({
   await first.close();
   await second.close();
 });
+
+test("the list picks up a session this device only had the link for", async ({
+  browser,
+}) => {
+  const first = await browser.newContext();
+  const second = await browser.newContext();
+  const a = await first.newPage();
+  const b = await second.newPage();
+
+  const link = await afterSync(a, () => createSession(a, "Makan sore tim"));
+
+  await b.route("**/api/**", (route) => route.abort());
+  await b.goto(link);
+  await expect(b.locator("[data-session]")).toHaveAttribute(
+    "data-state",
+    "missing",
+  );
+  await b.unroute("**/api/**");
+
+  await afterSync(b, () => b.goto("/"));
+
+  await expect(b.locator("[data-sessions] .km-row-title")).toHaveText([
+    "Makan sore tim",
+  ]);
+
+  await first.close();
+  await second.close();
+});
