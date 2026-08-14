@@ -33,7 +33,10 @@ Merging is a pure function on the client.
 - Id generation moves from `db.ts` to `id.ts` and from `node:crypto` randomBytes to
   `crypto.getRandomValues`, which Node 24 and every browser both have
 - The service worker precaches the shell and never caches data. The service worker
-  serves the app; IndexedDB serves the data
+  serves the app; IndexedDB serves the data. It supersedes
+  `docs/adr/0001-no-service-worker-in-v2.md`, which deferred the worker until the
+  local store it serves existed. That ADR is left as written: it records why v2
+  shipped without one, not a rule this branch has to keep
 - The QR stays server-only and online-only. Offline the share block shows URL text.
   An offline QR cannot resolve a scan, so it is not worth a client-side bundle
 - Sync fires on load, `online` and `visibilitychange`. No polling, no sync control
@@ -216,7 +219,38 @@ reads and writes the same row as the canonical one.
   and `creatorDoc` stays pure
 - The service worker is `public/sw.js` with a hand-bumped `version` constant as its
   cache name, `skipWaiting()` and `clients.claim()`, deleting every other cache on
-  activate
+  activate. `public/` is copied rather than processed, so there is no build stamp to
+  inject and nothing generates that constant
+- Navigations are cache-first on the exact URL, network on a miss, and the precached
+  session shell as the last resort. Network-first would keep the QR right whenever
+  there is a connection, and was rejected for what it costs: a round trip in front of
+  the first paint, which is the one thing this branch exists to remove. Cache-first
+  gives up almost nothing in exchange, because a miss already goes to the network -
+  `/` and `/new` are precached, and a session's own shell is cached the first time it
+  is opened, so a borrowed shell only ever appears for a link this device has never
+  opened online. Either way the data comes from IndexedDB; only the shell is at stake
+- Precached: `/`, `/new`, `/s/0000000` and the two woff2 fonts - everything the app
+  can name. The stylesheet is hashed and the client script is inlined into the HTML,
+  so a fixed list cannot reach either; every other same-origin GET is cached the first
+  time it is used instead. Generating a manifest would name them and is not worth a
+  build step. The cost is one uncached load: the first visit installs the worker but
+  is not yet controlled by it, so the stylesheet only reaches the cache on the second
+  navigation
+- The fallback answers any navigation, not only `/s/*`. An offline navigation to a
+  route that was never cached therefore gets the session shell, whose client reports
+  the session as missing - the same class of answer `/404` gives, one condition
+  cheaper
+- `/api/**` is never cached and never served from a cache; the worker declines it
+  before the cache is opened. A sync request answered from a cache stops devices
+  converging while every document involved is correct, so it reads as a merge bug and
+  gets debugged as one
+- One shell serves an unbounded URL space, so nothing baked into it can be trusted.
+  The client reads the session id from `location.pathname`, and where the shell's
+  `data-id` disagrees it removes the server-rendered QR and writes the share URL from
+  `location`. A QR is a link nobody can read before following it, so pointing one at
+  another session is worse than showing none
+- A cached shell is replaced only when `version` changes, `astro dev` included. Bump
+  it, or unregister the worker, after changing anything the shell ships
 - Malformed ids are rejected client-side by `normalizeSessionId` as well as by the
   page, since the service worker serves the shell for any `/s/*`
 - A sync is push then pull, in that order, so a device that voted while it was away
@@ -288,8 +322,13 @@ a temporary server-side create would be code written only to be deleted.
       session and the landing page fans out over every session it holds. Both paint
       from the store before the first request leaves, which is the whole point of
       the branch and is pinned by a spec that holds the relay open
-- [ ] The service worker precaches the shell
-- [ ] Delete dead code; update `AGENTS.md`, `README.md`, `PLAN.md` and `docs/talk.md`
+- [x] The service worker precaches the shell, and one cached shell learns to serve any
+      session: the client takes the id from the path and drops a QR that was rendered
+      for a different one
+- [ ] Delete dead code; update `AGENTS.md`, `README.md`, `PLAN.md` and `docs/talk.md`.
+      `docs/talk.md` still lists no branch past `2-ssr-csr`, and its demo advice -
+      throttle rather than go offline, because there is no service worker - is true of
+      v2 and wrong here
 
 ## Manual checks
 
