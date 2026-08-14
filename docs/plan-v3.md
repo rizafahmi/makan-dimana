@@ -186,6 +186,9 @@ reads and writes the same row as the canonical one.
   `readSession(id)`, `writeSession(session)` and `deviceId()`. It is client-only, so it
   sits beside `app.ts` rather than in `src/lib`, and it holds no logic - anything
   resembling a decision belongs in the pure half
+- `src/scripts/sync.ts` is the other plumbing module: `exchange(id, device, own)` is
+  the round trip and `keepSynced(run)` is the triggers. Both are client-only and
+  neither decides anything - what a pull does to the store is `mergePulled`'s call
 - The device id is `crypto.randomUUID()`, generated once and persisted in IndexedDB's
   `meta` store. Get-or-create stays in the adapter rather than becoming a pure
   function: the only decision in it is a `??`, and persisting the result is its whole
@@ -216,8 +219,38 @@ reads and writes the same row as the canonical one.
   activate
 - Malformed ids are rejected client-side by `normalizeSessionId` as well as by the
   page, since the service worker serves the shell for any `/s/*`
+- A sync is push then pull, in that order, so a device that voted while it was away
+  gets its own change up before it takes anyone else's down. The reverse order still
+  converges, but it publishes every local change a round trip later than it had to.
+  A spec asserts the pair of requests, in order
+- A pulled document never overwrites this device's own. `mergePulled` skips any
+  document carrying this device's id rather than re-applying the device's own copy
+  last: the relay's copy can only be older - a vote made since the last push is in
+  the store and not yet on the server - and skipping is order-independent, which
+  re-applying last is not. The same rule has a second half at the call site, where
+  the merge reads whatever the store holds when the network answers rather than the
+  snapshot it held when the exchange began, so a vote cast mid-exchange is not
+  rolled back by the answer
+- Every pulled element is parsed on its own and anything that will not parse is
+  skipped. The relay validates nothing, so one hand-crafted POST is enough to put a
+  string that is not a document into every other device's pull - `parseDoc` returns
+  null for it and for anything carrying no device id, and `mergePulled` drops it.
+  A bare `JSON.parse` per element, or trusting the array as a whole, hands that one
+  document the power to break every other device's merge
+- The landing page fans its sessions out in parallel and repaints once when they
+  have all answered. They are independent rows on the relay with no ordering between
+  them, so serial would only multiply the round trips, and the list is bounded by
+  being this device's alone - see `0005-the-landing-list-is-local.md` - so the
+  fan-out needs no concurrency limit
+- An exchange that throws resolves to no documents. A failure is silent by design:
+  nothing on screen, nothing in the console, no retry - the next trigger is the retry
+- `visibilitychange` is listened for on `document`, where it is fired. The real event
+  bubbles to `window` and a synthetic one does not, which is a trap for the spec
+  rather than for the app: headless Chromium keeps every page visible, so the spec
+  dispatches the event instead of backgrounding the tab
 - Browser suites are `test/*.spec.ts` under `@playwright/test`; everything else stays
-  `test/*.test.ts` under `node --test`
+  `test/*.test.ts` under `node --test`. Two browser contexts are two devices, which
+  is what makes convergence testable at all
 
 ## Steps
 
@@ -251,7 +284,10 @@ a temporary server-side create would be code written only to be deleted.
       retry button and the loading and error copy are all deleted with it. Both shells
       ship their container empty in the same commit, because the only thing still
       putting `Memuat...` on screen was markup describing a fetch that no longer happens
-- [ ] Sync on load, `online` and `visibilitychange`
+- [x] Sync on load, `online` and `visibilitychange`. The session page syncs its own
+      session and the landing page fans out over every session it holds. Both paint
+      from the store before the first request leaves, which is the whole point of
+      the branch and is pinned by a spec that holds the relay open
 - [ ] The service worker precaches the shell
 - [ ] Delete dead code; update `AGENTS.md`, `README.md`, `PLAN.md` and `docs/talk.md`
 
