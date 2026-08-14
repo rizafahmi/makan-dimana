@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { emptyDoc } from "../src/lib/merge.ts";
-import { ownDoc, upsertDoc } from "../src/lib/store.ts";
+import { creatorDoc, emptyDoc } from "../src/lib/merge.ts";
+import { localList, ownDoc, upsertDoc } from "../src/lib/store.ts";
 
 test("a document replaces the one its device already wrote", () => {
   const held = [
@@ -45,4 +45,28 @@ test("a device that has never written gets a fresh empty document", () => {
 
   assert.deepEqual(ownDoc(held, "c9d3"), emptyDoc("c9d3"));
   assert.equal(held.length, 1);
+});
+
+test("the local list holds every stored session that has a creator document", () => {
+  const rows = localList([
+    {
+      id: "abc1234",
+      docs: [
+        creatorDoc(
+          "a3f1",
+          "Makan siang Jumat",
+          ["Warteg", "Padang"],
+          "2026-08-14 03:00:00",
+        ),
+        { ...emptyDoc("b7c2"), closed: true },
+      ],
+    },
+    { id: "def5678", docs: [{ ...emptyDoc("b7c2"), up: { "1": 1 } }] },
+  ]);
+
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].id, "abc1234");
+  assert.equal(rows[0].title, "Makan siang Jumat");
+  assert.equal(rows[0].created_at, "2026-08-14 03:00:00");
+  assert.equal(rows[0].is_open, 0);
 });
