@@ -1,5 +1,11 @@
 import { generateSessionId } from "../lib/id.ts";
-import { applyVote, creatorDoc, mergeDocs } from "../lib/merge.ts";
+import {
+  applyClose,
+  applyVote,
+  creatorDoc,
+  mergeDocs,
+  type SessionDoc,
+} from "../lib/merge.ts";
 import { listPlaces, tallyView, winnerView } from "../lib/session.ts";
 import { ownDoc, upsertDoc } from "../lib/store.ts";
 import { relativeTime, utcTimestamp } from "../lib/time.ts";
@@ -8,7 +14,6 @@ import { deviceId, readSession, writeSession } from "./idb.ts";
 
 type Row = { id: string; title: string; is_open: number; created_at: string };
 type Session = NonNullable<ReturnType<typeof mergeDocs>>;
-type State = (state: string, text: string) => void;
 
 const timeout = 10_000;
 const holdDelay = 500;
@@ -53,12 +58,9 @@ const loader = (
   root: HTMLElement,
   url: string,
   draw: (data: unknown) => void,
-  missing: string | null,
-  onState: State,
 ) => {
   const failed = () => {
     message(root, "error", failureText);
-    onState("error", failureText);
     const retry = button("Coba lagi", () => void run());
     retry.className = "km-button";
     retry.dataset.variant = "outline";
@@ -69,10 +71,6 @@ const loader = (
     message(root, "loading", loadingText);
     try {
       const res = await request(url);
-      if (res.status === 404 && missing !== null) {
-        message(root, "missing", missing);
-        return onState("missing", missing);
-      }
       if (!res.ok) return failed();
       draw(await res.json());
     } catch {
@@ -80,7 +78,7 @@ const loader = (
     }
   };
 
-  return { run, failed };
+  return run;
 };
 
 const mountSession = async (root: HTMLElement) => {
@@ -100,7 +98,6 @@ const mountSession = async (root: HTMLElement) => {
 
   function placeRow(slot: string) {
     const node = el("button");
-    node.dataset.action = "upvote";
     node.dataset.place = slot;
 
     node.addEventListener("pointerdown", () => {
@@ -248,6 +245,16 @@ const mountSession = async (root: HTMLElement) => {
       tally.className = "km-tally";
       root.append(tally);
     }
+
+    if (isOpen) {
+      const actions = el("div");
+      actions.className = "km-actions";
+      const toggle = button("Tutup sesi", () => void close());
+      toggle.className = "km-button";
+      toggle.dataset.variant = "outline";
+      actions.append(toggle);
+      root.append(actions);
+    }
     voted = null;
   }
 
@@ -262,14 +269,23 @@ const mountSession = async (root: HTMLElement) => {
     draw(merged);
   }
 
-  async function vote(slot: number, delta: number) {
-    const focused = focusedPlace();
-    const next = applyVote(ownDoc(stored.docs, device), slot, delta);
+  async function change(transform: (doc: SessionDoc) => SessionDoc) {
+    const next = transform(ownDoc(stored.docs, device));
     stored = { id, docs: upsertDoc(stored.docs, next) };
     await writeSession(stored);
+  }
+
+  async function vote(slot: number, delta: number) {
+    const focused = focusedPlace();
+    await change((doc) => applyVote(doc, slot, delta));
     voted = String(slot);
     render();
     restore(focused);
+  }
+
+  async function close() {
+    await change(applyClose);
+    render();
   }
 
   render();
@@ -322,8 +338,7 @@ const mountLanding = (root: HTMLElement) => {
     root.append(head, list);
   };
 
-  const { run } = loader(root, "/api/sessions", draw, null, () => {});
-  void run();
+  void loader(root, "/api/sessions", draw)();
 };
 
 const fieldNames = ["title", "place1", "place2", "place3", "place4"];

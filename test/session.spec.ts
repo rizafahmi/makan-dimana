@@ -117,6 +117,24 @@ test("holding a row cancels a vote, and letting go does not add one back", async
   await expect(warteg()).toHaveAttribute("data-votes", "0");
 });
 
+test("closing is one-way: it survives a reload and offers no way back", async ({
+  page,
+}) => {
+  await createSession(page, "Makan siang Jumat");
+  await page.locator("button.km-place", { hasText: "Warteg Bahari" }).click();
+
+  await page.getByRole("button", { name: "Tutup sesi" }).click();
+
+  await expect(page.getByText("Sudah ditutup")).toBeVisible();
+  await expect(page.getByText("Pemenang")).toBeVisible();
+
+  await page.reload();
+
+  await expect(page.getByText("Sudah ditutup")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Buka lagi" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Tutup sesi" })).toHaveCount(0);
+});
+
 test("a session this device does not hold reads as missing, not as loading", async ({
   page,
 }) => {
