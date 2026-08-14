@@ -21,6 +21,9 @@ const storedIds = (page: Page) =>
         const open = indexedDB.open("makan", 1);
         open.onerror = () => reject(open.error);
         open.onsuccess = () => {
+          if (!open.result.objectStoreNames.contains("sessions")) {
+            return resolve([]);
+          }
           const keys = open.result
             .transaction("sessions", "readonly")
             .objectStore("sessions")
@@ -174,4 +177,28 @@ test("opening a link records the session, so closing the tab cannot lose it", as
   );
 
   expect(await storedIds(page)).toEqual(["zzzzzzz"]);
+});
+
+test("a malformed id is refused by the client, not only by the page", async ({
+  page,
+}) => {
+  await page.route("**/s/not-an-id", async (route) => {
+    const shell = await page.request.get("/s/zzzzzzz");
+    await route.fulfill({
+      status: 200,
+      contentType: "text/html",
+      body: (await shell.text()).replace(
+        'data-id="zzzzzzz"',
+        'data-id="not-an-id"',
+      ),
+    });
+  });
+
+  await page.goto("/s/not-an-id");
+
+  await expect(page.locator("[data-session]")).toHaveAttribute(
+    "data-state",
+    "missing",
+  );
+  expect(await storedIds(page)).toEqual([]);
 });

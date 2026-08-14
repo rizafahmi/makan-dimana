@@ -1,4 +1,4 @@
-import { generateSessionId } from "../lib/id.ts";
+import { generateSessionId, normalizeSessionId } from "../lib/id.ts";
 import {
   applyClose,
   applyVote,
@@ -82,9 +82,18 @@ const loader = (
 };
 
 const mountSession = async (root: HTMLElement) => {
-  const id = root.dataset.id ?? "";
   const share = document.querySelector<HTMLElement>("[data-share]");
 
+  const missing = () => {
+    message(root, "missing", missingText);
+    document.title = missingText;
+    if (share) share.hidden = true;
+  };
+
+  const canonical = normalizeSessionId(root.dataset.id ?? "");
+  if (canonical === null) return missing();
+
+  const id = canonical;
   const device = await deviceId();
   const first = await readSession(id);
   let stored = first ?? { id, docs: [] };
@@ -262,12 +271,7 @@ const mountSession = async (root: HTMLElement) => {
 
   function render() {
     const merged = mergeDocs(stored.docs);
-    if (merged === null) {
-      message(root, "missing", missingText);
-      document.title = missingText;
-      if (share) share.hidden = true;
-      return;
-    }
+    if (merged === null) return missing();
     draw(merged);
   }
 
