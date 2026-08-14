@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { creatorDoc, emptyDoc } from "../src/lib/merge.ts";
-import { localList, ownDoc, upsertDoc } from "../src/lib/store.ts";
+import { localList, mergePulled, ownDoc, upsertDoc } from "../src/lib/store.ts";
 
 test("a document replaces the one its device already wrote", () => {
   const held = [
@@ -45,6 +45,66 @@ test("a device that has never written gets a fresh empty document", () => {
 
   assert.deepEqual(ownDoc(held, "c9d3"), emptyDoc("c9d3"));
   assert.equal(held.length, 1);
+});
+
+test("a pulled document from another device joins the ones this device holds", () => {
+  const held = [
+    creatorDoc(
+      "a3f1",
+      "Makan siang Jumat",
+      ["Warteg", "Padang"],
+      "2026-08-14 03:00:00",
+    ),
+  ];
+
+  const next = mergePulled(
+    held,
+    [JSON.stringify({ ...emptyDoc("b7c2"), up: { "1": 1 } })],
+    "a3f1",
+  );
+
+  assert.deepEqual(
+    next.map((doc) => doc.device),
+    ["a3f1", "b7c2"],
+  );
+  assert.deepEqual(next[1], { ...emptyDoc("b7c2"), up: { "1": 1 } });
+  assert.equal(held.length, 1);
+});
+
+test("a pulled document that will not parse is skipped, not fatal", () => {
+  const next = mergePulled(
+    [],
+    [
+      "not json at all {{{",
+      JSON.stringify({ ...emptyDoc("b7c2"), up: { "1": 1 } }),
+    ],
+    "a3f1",
+  );
+
+  assert.deepEqual(
+    next.map((doc) => doc.device),
+    ["b7c2"],
+  );
+});
+
+test("a pulled string that parses but is not a document is skipped too", () => {
+  const junk = ['{"title":"Sesi palsu"}', '"sesi"', "null", "42", "[]"];
+
+  assert.deepEqual(mergePulled([], junk, "a3f1"), []);
+});
+
+test("a pulled copy of this device's own document never overwrites it", () => {
+  const own = { ...emptyDoc("a3f1"), up: { "1": 2 } };
+  const stale = { ...emptyDoc("a3f1"), up: { "1": 1 } };
+  const other = emptyDoc("b7c2");
+
+  const next = mergePulled(
+    [own],
+    [JSON.stringify(stale), JSON.stringify(other)],
+    "a3f1",
+  );
+
+  assert.deepEqual(next, [own, other]);
 });
 
 test("the local list holds every stored session that has a creator document", () => {

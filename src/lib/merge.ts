@@ -41,6 +41,16 @@ export const applyVote = (doc: SessionDoc, slot: number, delta: number) =>
 
 export const applyClose = (doc: SessionDoc) => ({ ...doc, closed: true });
 
+export const parseDoc = (raw: string): SessionDoc | null => {
+  let doc: SessionDoc | null = null;
+  try {
+    doc = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  return typeof doc?.device === "string" ? doc : null;
+};
+
 export const mergeDocs = (docs: SessionDoc[]) => {
   const claimants = docs.filter((doc) => doc.title !== null);
   if (claimants.length === 0) return null;
