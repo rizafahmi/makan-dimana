@@ -22,6 +22,13 @@ export const emptyDoc = (device: string) => ({
   down: {},
 });
 
+export const creatorDoc = (
+  device: string,
+  title: string,
+  places: string[],
+  createdAt: string,
+) => ({ ...emptyDoc(device), title, places, created_at: createdAt });
+
 export const mergeDocs = (docs: SessionDoc[]) => {
   const claimants = docs.filter((doc) => doc.title !== null);
   if (claimants.length === 0) return null;

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { emptyDoc } from "../src/lib/merge.ts";
+import { creatorDoc, emptyDoc } from "../src/lib/merge.ts";
 
 test("an empty document holds nothing but its device", () => {
   assert.deepEqual(emptyDoc("a3f1"), {
@@ -12,4 +12,24 @@ test("an empty document holds nothing but its device", () => {
     up: {},
     down: {},
   });
+});
+
+test("a creator document carries the session's identity", () => {
+  assert.deepEqual(
+    creatorDoc(
+      "a3f1",
+      "Makan siang Jumat",
+      ["Warteg", "Padang"],
+      "2026-08-14 03:00:00",
+    ),
+    {
+      device: "a3f1",
+      title: "Makan siang Jumat",
+      places: ["Warteg", "Padang"],
+      created_at: "2026-08-14 03:00:00",
+      closed: false,
+      up: {},
+      down: {},
+    },
+  );
 });
