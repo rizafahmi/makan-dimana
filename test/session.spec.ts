@@ -82,6 +82,41 @@ test("focus survives the re-render a vote causes", async ({ page }) => {
   await expect(warteg()).toBeFocused();
 });
 
+test("Shift+click cancels a vote instead of stacking another", async ({
+  page,
+}) => {
+  await createSession(page, "Makan larut tim");
+  const warteg = () =>
+    page.locator("button.km-place", { hasText: "Warteg Bahari" });
+
+  await warteg().click();
+  await warteg().click({ modifiers: ["Shift"] });
+
+  await expect(warteg()).toHaveAttribute("data-votes", "0");
+
+  await page.reload();
+
+  await expect(warteg()).toHaveAttribute("data-votes", "0");
+});
+
+test("holding a row cancels a vote, and letting go does not add one back", async ({
+  page,
+}) => {
+  await createSession(page, "Makan tengah malam");
+  const warteg = () =>
+    page.locator("button.km-place", { hasText: "Warteg Bahari" });
+
+  await warteg().click();
+  await expect(warteg()).toHaveAttribute("data-votes", "1");
+
+  await warteg().hover();
+  await page.mouse.down();
+  await page.waitForTimeout(700);
+  await page.mouse.up();
+
+  await expect(warteg()).toHaveAttribute("data-votes", "0");
+});
+
 test("a session this device does not hold reads as missing, not as loading", async ({
   page,
 }) => {

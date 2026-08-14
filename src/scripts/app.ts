@@ -11,6 +11,7 @@ type Session = NonNullable<ReturnType<typeof mergeDocs>>;
 type State = (state: string, text: string) => void;
 
 const timeout = 10_000;
+const holdDelay = 500;
 const hintText =
   "Ketuk baris buat vote. Tahan atau Shift+klik buat batalin.";
 const loadingText = "Memuat...";
@@ -89,12 +90,38 @@ const mountSession = async (root: HTMLElement) => {
   const device = await deviceId();
   let stored = (await readSession(id)) ?? { id, docs: [] };
   let voted: string | null = null;
+  let held = false;
+  let timer = 0;
+
+  const stopHold = () => {
+    if (timer !== 0) clearTimeout(timer);
+    timer = 0;
+  };
 
   function placeRow(slot: string) {
     const node = el("button");
     node.dataset.action = "upvote";
     node.dataset.place = slot;
-    node.addEventListener("click", () => void vote(Number(slot), 1));
+
+    node.addEventListener("pointerdown", () => {
+      held = false;
+      stopHold();
+      timer = window.setTimeout(() => {
+        held = true;
+        void vote(Number(slot), -1);
+      }, holdDelay);
+    });
+    for (const name of ["pointerup", "pointerleave", "pointercancel"]) {
+      node.addEventListener(name, stopHold);
+    }
+    node.addEventListener("click", (event) => {
+      stopHold();
+      if (held) {
+        held = false;
+        return;
+      }
+      void vote(Number(slot), event.shiftKey ? -1 : 1);
+    });
     return node;
   }
 
