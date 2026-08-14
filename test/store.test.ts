@@ -70,3 +70,21 @@ test("the local list holds every stored session that has a creator document", ()
   assert.equal(rows[0].created_at, "2026-08-14 03:00:00");
   assert.equal(rows[0].is_open, 0);
 });
+
+test("the local list is newest first, and the session id breaks a tie", () => {
+  const held = (id: string, createdAt: string) => ({
+    id,
+    docs: [creatorDoc("a3f1", id, ["Warteg", "Padang"], createdAt)],
+  });
+
+  const rows = localList([
+    held("bbb1111", "2026-08-14 03:00:00"),
+    held("ccc2222", "2026-08-14 05:00:00"),
+    held("ddd3333", "2026-08-14 03:00:00"),
+  ]);
+
+  assert.deepEqual(
+    rows.map((row) => row.id),
+    ["ccc2222", "ddd3333", "bbb1111"],
+  );
+});
