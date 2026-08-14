@@ -22,7 +22,7 @@ export const mergeDocs = (docs: SessionDoc[]) => {
   return {
     title: creator.title,
     created_at: creator.created_at,
-    is_open: 1,
+    is_open: docs.some((doc) => doc.closed) ? 0 : 1,
     place1_name: creator.places?.[0] ?? null,
     place2_name: creator.places?.[1] ?? null,
     place3_name: creator.places?.[2] ?? null,

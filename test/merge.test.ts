@@ -50,3 +50,28 @@ test("tallies sum every document's ups minus downs, unclamped", () => {
   assert.equal(session.place1_votes, 2);
   assert.equal(session.place2_votes, -1);
 });
+
+test("a session is closed when any document closed it", () => {
+  const session = mergeDocs([
+    {
+      device: "a3f1",
+      title: "Makan siang Jumat",
+      places: ["Warteg", "Padang"],
+      created_at: "2026-08-14 03:00:00",
+      closed: false,
+      up: {},
+      down: {},
+    },
+    {
+      device: "b7c2",
+      title: null,
+      places: null,
+      created_at: null,
+      closed: true,
+      up: {},
+      down: {},
+    },
+  ]);
+
+  assert.equal(session.is_open, 0);
+});
