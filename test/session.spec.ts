@@ -180,6 +180,17 @@ test("opening a link records the session, so closing the tab cannot lose it", as
   expect(await storedIds(page)).toEqual(["zzzzzzz"]);
 });
 
+test("a trailing slash on a session link still finds the session", async ({
+  page,
+}) => {
+  await createSession(page, "Makan bareng tim");
+  await page.goto(`${new URL(page.url()).pathname}/`);
+
+  await expect(
+    page.getByRole("heading", { name: "Makan bareng tim" }),
+  ).toBeVisible();
+});
+
 test("a malformed id is refused by the client, not only by the page", async ({
   page,
 }) => {

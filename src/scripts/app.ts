@@ -57,7 +57,7 @@ const mountSession = async (root: HTMLElement) => {
     if (share) share.hidden = true;
   };
 
-  const canonical = normalizeSessionId(location.pathname.slice(3));
+  const canonical = normalizeSessionId(location.pathname.split("/")[2] ?? "");
   if (canonical === null) return missing();
 
   const id = canonical;
