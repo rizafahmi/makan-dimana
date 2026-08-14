@@ -1,3 +1,6 @@
+export const utcTimestamp = (at: Date) =>
+  at.toISOString().slice(0, 19).replace("T", " ");
+
 export const relativeTime = (then: Date, now: Date) => {
   const minutes = Math.floor((now.getTime() - then.getTime()) / 60000);
   const hours = Math.floor(minutes / 60);
