@@ -1,6 +1,7 @@
 import { generateSessionId } from "../lib/id.ts";
-import { creatorDoc, mergeDocs } from "../lib/merge.ts";
+import { applyVote, creatorDoc, mergeDocs } from "../lib/merge.ts";
 import { listPlaces, tallyView, winnerView } from "../lib/session.ts";
+import { ownDoc, upsertDoc } from "../lib/store.ts";
 import { relativeTime, utcTimestamp } from "../lib/time.ts";
 import { validateCreate } from "../lib/validate.ts";
 import { deviceId, readSession, writeSession } from "./idb.ts";
@@ -85,10 +86,14 @@ const mountSession = async (root: HTMLElement) => {
   const id = root.dataset.id ?? "";
   const share = document.querySelector<HTMLElement>("[data-share]");
 
+  const device = await deviceId();
+  let stored = (await readSession(id)) ?? { id, docs: [] };
+
   function placeRow(slot: string) {
     const node = el("button");
     node.dataset.action = "upvote";
     node.dataset.place = slot;
+    node.addEventListener("click", () => void vote(Number(slot), 1));
     return node;
   }
 
@@ -206,15 +211,25 @@ const mountSession = async (root: HTMLElement) => {
 
   }
 
-  const stored = (await readSession(id)) ?? { id, docs: [] };
-  const merged = mergeDocs(stored.docs);
-  if (merged === null) {
-    message(root, "missing", missingText);
-    document.title = missingText;
-    if (share) share.hidden = true;
-    return;
+  function render() {
+    const merged = mergeDocs(stored.docs);
+    if (merged === null) {
+      message(root, "missing", missingText);
+      document.title = missingText;
+      if (share) share.hidden = true;
+      return;
+    }
+    draw(merged);
   }
-  draw(merged);
+
+  async function vote(slot: number, delta: number) {
+    const next = applyVote(ownDoc(stored.docs, device), slot, delta);
+    stored = { id, docs: upsertDoc(stored.docs, next) };
+    await writeSession(stored);
+    render();
+  }
+
+  render();
 };
 
 const mountLanding = (root: HTMLElement) => {
