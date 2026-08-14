@@ -84,8 +84,6 @@
   --border-flag: 5px;
   --focus-outline: 2px solid var(--accent);
   --focus-offset: 2px;
-
-  --disabled-opacity: 0.6;
 }
 
 @media (min-width: 40rem) {
@@ -203,7 +201,7 @@ p {
   transition: background 120ms linear;
 }
 
-.km-button:hover:not(:disabled) {
+.km-button:hover {
   background: var(--accent-hover);
 }
 
@@ -213,14 +211,9 @@ p {
   border-color: var(--hairline);
 }
 
-.km-button[data-variant="outline"]:hover:not(:disabled) {
+.km-button[data-variant="outline"]:hover {
   background: var(--accent-wash);
   border-color: var(--accent);
-}
-
-.km-button:disabled {
-  opacity: var(--disabled-opacity);
-  cursor: default;
 }
 
 .km-button[data-block="true"] {
@@ -259,10 +252,6 @@ p {
   color: var(--text);
   border: var(--border-width) solid transparent;
   border-radius: var(--radius);
-}
-
-.km-input::placeholder {
-  color: var(--faint);
 }
 
 .km-input:focus-visible {
@@ -518,12 +507,8 @@ button.km-place {
   transition: background 120ms linear;
 }
 
-button.km-place:hover:not(:disabled) {
+button.km-place:hover {
   background: var(--surface);
-}
-
-button.km-place:disabled {
-  cursor: default;
 }
 
 @keyframes km-voted {
