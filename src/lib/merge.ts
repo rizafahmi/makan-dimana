@@ -39,6 +39,8 @@ export const applyVote = (doc: SessionDoc, slot: number, delta: number) =>
     ? { ...doc, down: bump(doc.down, slot) }
     : { ...doc, up: bump(doc.up, slot) };
 
+export const applyClose = (doc: SessionDoc) => ({ ...doc, closed: true });
+
 export const mergeDocs = (docs: SessionDoc[]) => {
   const claimants = docs.filter((doc) => doc.title !== null);
   if (claimants.length === 0) return null;
