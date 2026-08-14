@@ -59,6 +59,24 @@ Merging is a pure function on the client.
   travels beside the document rather than inside it because the row is keyed
   `(session_id, device_id)` and the server cannot read a device id out of a payload
   it never parses
+- The demo serves the relay behind an HTTPS-terminating proxy, so the config has to
+  name the tunnel's domain. `checkOrigin` compares the browser's `Origin` header
+  against `Astro.url.origin`, and that URL is built from the request the server
+  actually received - plain `http` on whatever `Host` arrived, because nothing
+  reached the process over TLS. The browser sends `Origin: https://<host>.ts.net`,
+  the scheme does not match, and every sync POST is a 403 while the page itself
+  loads fine. `security.allowedDomains` is what lets Astro see the real external
+  origin: with `[{ hostname: "**.ts.net", protocol: "https" }]` the forwarded
+  `X-Forwarded-Proto` and `X-Forwarded-Host` are trusted, `Astro.url` becomes the
+  address the phone typed, and the share URL and QR built from it become reachable
+  too. `**` matches any subdomain depth, so it covers a MagicDNS name like
+  `foxos.taila890ba.ts.net`. The trade is that anything able to reach the server
+  directly could claim such a host; that is acceptable because the server binds
+  `127.0.0.1` and only the funnel reaches it. `checkOrigin: false` and
+  `allowedDomains: [{}]` both remove the 403 by removing the check instead, which is
+  what `test/api.test.ts` pins against: a forwarded host off the allowlist, an
+  `Origin` that disagrees with the forwarded host, and a lookalike host that merely
+  ends in the allowed name are all still refused
 - A read returns an array of document *strings*, so the client runs `JSON.parse` per
   element. Concatenating the stored strings into one JSON array server-side would
   hand the client real objects while still parsing nothing, and it is the obvious

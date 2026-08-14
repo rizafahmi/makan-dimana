@@ -94,6 +94,18 @@ Binding `127.0.0.1` rather than `0.0.0.0` is also deliberate: it makes the app r
 *only* through the HTTPS origin, so you cannot accidentally demo over the plain-HTTP LAN
 path where the service worker never registers.
 
+The config has to allow the tunnel's domain as well, and this trap fails silently
+rather than confusingly. `astro.config.mjs` carries
+`security: { allowedDomains: [{ hostname: '**.ts.net', protocol: 'https' }] }`. Without
+it Astro builds `Astro.url` from the request the process actually received - plain
+`http`, since the TLS ended at the funnel - so it never matches the `https://` origin
+the browser sends, and Astro's `checkOrigin` answers every sync POST with 403
+`Cross-site POST form submissions are forbidden`. Nothing on screen says so. The page
+loads, votes land in IndexedDB and the tallies move, but no document ever reaches the
+relay, so a second device pulls an empty session and shows **Sesi tidak ditemukan**.
+The share QR is wrong for the same reason, encoding `http://` for a hostname that only
+answers on HTTPS. A `trycloudflare.com` quick tunnel needs its own pattern.
+
 That publishes `https://<machine>.<tailnet>.ts.net`, which is the same address at every
 rehearsal and on the day. `tailscale funnel off` takes it down, and taking it down *is*
 the offline demo: the worker keeps serving the shell from cache with nothing on the
