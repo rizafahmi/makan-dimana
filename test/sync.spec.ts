@@ -248,6 +248,95 @@ test("a document the relay never validated costs no one else their merge", async
   await second.close();
 });
 
+test("a sync that pulls nothing new leaves focus where the user put it", async ({
+  page,
+}) => {
+  await afterSync(page, () => createSession(page, "Makan tenang"));
+
+  await warteg(page).focus();
+  await afterSync(page, () =>
+    page.evaluate(() => document.dispatchEvent(new Event("visibilitychange"))),
+  );
+  await page.waitForTimeout(settle);
+
+  await expect(warteg(page)).toBeFocused();
+});
+
+test("a sync that pulls nothing new leaves the just-voted flash alone", async ({
+  page,
+}) => {
+  await afterSync(page, () => createSession(page, "Makan kilat"));
+  await warteg(page).click();
+  await expect(warteg(page)).toHaveAttribute("data-voted", "true");
+
+  await afterSync(page, () =>
+    page.evaluate(() => document.dispatchEvent(new Event("visibilitychange"))),
+  );
+  await page.waitForTimeout(settle);
+
+  await expect(warteg(page)).toHaveAttribute("data-voted", "true");
+});
+
+test("a sync that brings a change repaints under the user without moving them", async ({
+  browser,
+}) => {
+  const first = await browser.newContext();
+  const second = await browser.newContext();
+  const a = await first.newPage();
+  const b = await second.newPage();
+
+  const link = await afterSync(a, () => createSession(a, "Makan ramai"));
+  await afterSync(b, () => b.goto(link));
+  await warteg(b).click();
+  await expect(warteg(b)).toHaveAttribute("data-votes", "1");
+  await afterSync(b, () => b.reload());
+
+  await warteg(a).focus();
+  await afterSync(a, () =>
+    a.evaluate(() => document.dispatchEvent(new Event("visibilitychange"))),
+  );
+
+  await expect(warteg(a)).toHaveAttribute("data-votes", "1");
+  await expect(warteg(a)).toBeFocused();
+
+  await first.close();
+  await second.close();
+});
+
+test("a sync that repeats the other device's document leaves the page alone", async ({
+  browser,
+}) => {
+  const first = await browser.newContext();
+  const second = await browser.newContext();
+  const a = await first.newPage();
+  const b = await second.newPage();
+
+  const link = await afterSync(a, () => createSession(a, "Makan berulang"));
+  await afterSync(b, () => b.goto(link));
+  await warteg(b).click();
+  await expect(warteg(b)).toHaveAttribute("data-votes", "1");
+  await afterSync(b, () => b.reload());
+
+  await afterSync(a, () =>
+    a.evaluate(() => document.dispatchEvent(new Event("visibilitychange"))),
+  );
+  await expect(warteg(a)).toHaveAttribute("data-votes", "1");
+
+  await warteg(a).click();
+  await expect(warteg(a)).toHaveAttribute("data-voted", "true");
+
+  await afterSync(a, () =>
+    a.evaluate(() => document.dispatchEvent(new Event("visibilitychange"))),
+  );
+  await a.waitForTimeout(settle);
+
+  await expect(warteg(a)).toHaveAttribute("data-votes", "2");
+  await expect(warteg(a)).toHaveAttribute("data-voted", "true");
+
+  await first.close();
+  await second.close();
+});
+
 test("a vote cast while the relay is answering survives the answer", async ({
   page,
 }) => {

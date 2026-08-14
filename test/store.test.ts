@@ -1,7 +1,13 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { creatorDoc, emptyDoc } from "../src/lib/merge.ts";
-import { localList, mergePulled, ownDoc, upsertDoc } from "../src/lib/store.ts";
+import {
+  applyPulled,
+  localList,
+  mergePulled,
+  ownDoc,
+  upsertDoc,
+} from "../src/lib/store.ts";
 
 test("a document replaces the one its device already wrote", () => {
   const held = [
@@ -105,6 +111,29 @@ test("a pulled copy of this device's own document never overwrites it", () => {
   );
 
   assert.deepEqual(next, [own, other]);
+});
+
+test("a pull that lands nothing hands back no session to store", () => {
+  const own = { ...emptyDoc("a3f1"), up: { "1": 1 } };
+  const held = { id: "abc1234", docs: [own] };
+
+  assert.equal(applyPulled(held, [JSON.stringify(own), "junk"], "a3f1"), null);
+});
+
+test("a pull that repeats what this device already holds lands nothing either", () => {
+  const own = creatorDoc(
+    "a3f1",
+    "Makan siang Jumat",
+    ["Warteg", "Padang"],
+    "2026-08-14 03:00:00",
+  );
+  const other = { ...emptyDoc("b7c2"), up: { "1": 1 } };
+  const held = { id: "abc1234", docs: [own, other] };
+
+  assert.equal(
+    applyPulled(held, [own, other].map((doc) => JSON.stringify(doc)), "a3f1"),
+    null,
+  );
 });
 
 test("the local list holds every stored session that has a creator document", () => {

@@ -7,7 +7,13 @@ import {
   type SessionDoc,
 } from "../lib/merge.ts";
 import { listPlaces, tallyView, winnerView } from "../lib/session.ts";
-import { localList, mergePulled, ownDoc, upsertDoc } from "../lib/store.ts";
+import {
+  applyPulled,
+  localList,
+  mergePulled,
+  ownDoc,
+  upsertDoc,
+} from "../lib/store.ts";
 import { relativeTime, utcTimestamp } from "../lib/time.ts";
 import { validateCreate } from "../lib/validate.ts";
 import { allSessions, deviceId, readSession, writeSession } from "./idb.ts";
@@ -248,6 +254,12 @@ const mountSession = async (root: HTMLElement) => {
     draw(merged);
   }
 
+  function repaint() {
+    const focused = focusedPlace();
+    render();
+    restore(focused);
+  }
+
   async function change(transform: (doc: SessionDoc) => SessionDoc) {
     const next = transform(ownDoc(stored.docs, device));
     stored = { id, docs: upsertDoc(stored.docs, next) };
@@ -255,11 +267,9 @@ const mountSession = async (root: HTMLElement) => {
   }
 
   async function vote(slot: number, delta: number) {
-    const focused = focusedPlace();
     await change((doc) => applyVote(doc, slot, delta));
     voted = String(slot);
-    render();
-    restore(focused);
+    repaint();
   }
 
   async function close() {
@@ -269,9 +279,11 @@ const mountSession = async (root: HTMLElement) => {
 
   async function sync() {
     const pulled = await exchange(id, device, ownDoc(stored.docs, device));
-    stored = { id, docs: mergePulled(stored.docs, pulled, device) };
+    const next = applyPulled(stored, pulled, device);
+    if (next === null) return;
+    stored = next;
     await writeSession(stored);
-    render();
+    repaint();
   }
 
   render();

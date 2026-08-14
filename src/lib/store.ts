@@ -4,6 +4,9 @@ export type StoredSession = { id: string; docs: SessionDoc[] };
 
 const descending = (a: string, b: string) => (a < b ? 1 : a > b ? -1 : 0);
 
+const same = (a: SessionDoc, b: SessionDoc) =>
+  JSON.stringify(a) === JSON.stringify(b);
+
 export const localList = (sessions: StoredSession[]) =>
   sessions
     .flatMap((session) => {
@@ -31,5 +34,18 @@ export const mergePulled = (
 ) =>
   pulled.reduce((held, raw) => {
     const doc = parseDoc(raw);
-    return doc === null || doc.device === device ? held : upsertDoc(held, doc);
+    return doc === null ||
+      doc.device === device ||
+      held.some((kept) => same(kept, doc))
+      ? held
+      : upsertDoc(held, doc);
   }, docs);
+
+export const applyPulled = (
+  session: StoredSession,
+  pulled: string[],
+  device: string,
+): StoredSession | null => {
+  const docs = mergePulled(session.docs, pulled, device);
+  return docs === session.docs ? null : { id: session.id, docs };
+};
