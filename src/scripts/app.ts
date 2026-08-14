@@ -7,10 +7,11 @@ import {
   type SessionDoc,
 } from "../lib/merge.ts";
 import { listPlaces, tallyView, winnerView } from "../lib/session.ts";
-import { localList, ownDoc, upsertDoc } from "../lib/store.ts";
+import { localList, mergePulled, ownDoc, upsertDoc } from "../lib/store.ts";
 import { relativeTime, utcTimestamp } from "../lib/time.ts";
 import { validateCreate } from "../lib/validate.ts";
 import { allSessions, deviceId, readSession, writeSession } from "./idb.ts";
+import { exchange } from "./sync.ts";
 
 type Session = NonNullable<ReturnType<typeof mergeDocs>>;
 
@@ -260,7 +261,15 @@ const mountSession = async (root: HTMLElement) => {
     render();
   }
 
+  async function sync() {
+    const pulled = await exchange(id, device, ownDoc(stored.docs, device));
+    stored = { id, docs: mergePulled(stored.docs, pulled, device) };
+    await writeSession(stored);
+    render();
+  }
+
   render();
+  void sync();
 };
 
 const mountLanding = async (root: HTMLElement) => {

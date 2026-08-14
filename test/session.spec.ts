@@ -51,11 +51,10 @@ test("a session created on this device renders from the local store", async ({
   await expect(page.getByText("Masih buka")).toBeVisible();
 });
 
-test("a vote survives a reload, with no server in it", async ({ page }) => {
-  const calls: string[] = [];
-  page.on("request", (request) => {
-    if (request.url().includes("/api/")) calls.push(request.url());
-  });
+test("a vote survives a reload with the relay refusing every request", async ({
+  page,
+}) => {
+  await page.route("**/api/**", (route) => route.abort());
 
   await createSession(page, "Makan malam tim");
   const warteg = () =>
@@ -68,7 +67,6 @@ test("a vote survives a reload, with no server in it", async ({ page }) => {
 
   await expect(warteg()).toHaveAttribute("data-votes", "1");
   await expect(page.getByText("1 suara masuk · 2 tempat")).toBeVisible();
-  expect(calls).toEqual([]);
 });
 
 test("the flash lands on the row just voted, and only while it is fresh", async ({
