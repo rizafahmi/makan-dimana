@@ -7,20 +7,16 @@ import {
   type SessionDoc,
 } from "../lib/merge.ts";
 import { listPlaces, tallyView, winnerView } from "../lib/session.ts";
-import { ownDoc, upsertDoc } from "../lib/store.ts";
+import { localList, ownDoc, upsertDoc } from "../lib/store.ts";
 import { relativeTime, utcTimestamp } from "../lib/time.ts";
 import { validateCreate } from "../lib/validate.ts";
-import { deviceId, readSession, writeSession } from "./idb.ts";
+import { allSessions, deviceId, readSession, writeSession } from "./idb.ts";
 
-type Row = { id: string; title: string; is_open: number; created_at: string };
 type Session = NonNullable<ReturnType<typeof mergeDocs>>;
 
-const timeout = 10_000;
 const holdDelay = 500;
 const hintText =
   "Ketuk baris buat vote. Tahan atau Shift+klik buat batalin.";
-const loadingText = "Memuat...";
-const failureText = "Gagal memuat. Periksa koneksi.";
 const missingText = "Sesi tidak ditemukan";
 
 const el = (tag: string, text?: string) => {
@@ -49,36 +45,6 @@ const message = (root: HTMLElement, state: string, text: string) => {
   clear(root);
   root.dataset.state = state;
   root.append(status(text));
-};
-
-const request = (url: string, init?: RequestInit) =>
-  fetch(url, { ...init, signal: AbortSignal.timeout(timeout) });
-
-const loader = (
-  root: HTMLElement,
-  url: string,
-  draw: (data: unknown) => void,
-) => {
-  const failed = () => {
-    message(root, "error", failureText);
-    const retry = button("Coba lagi", () => void run());
-    retry.className = "km-button";
-    retry.dataset.variant = "outline";
-    root.append(retry);
-  };
-
-  const run = async () => {
-    message(root, "loading", loadingText);
-    try {
-      const res = await request(url);
-      if (!res.ok) return failed();
-      draw(await res.json());
-    } catch {
-      failed();
-    }
-  };
-
-  return run;
 };
 
 const mountSession = async (root: HTMLElement) => {
@@ -297,54 +263,51 @@ const mountSession = async (root: HTMLElement) => {
   render();
 };
 
-const mountLanding = (root: HTMLElement) => {
-  const draw = (data: unknown) => {
-    const sessions = data as Row[];
-    clear(root);
-    root.dataset.state = "ready";
+const mountLanding = async (root: HTMLElement) => {
+  const sessions = localList(await allSessions());
+  root.dataset.state = "ready";
 
-    if (sessions.length === 0) {
-      root.append(status("Belum ada sesi."));
-      return;
-    }
+  if (sessions.length === 0) {
+    root.append(status("Belum ada sesi."));
+    return;
+  }
 
-    const head = el("div");
-    head.className = "km-subhead";
-    head.append(el("span", "Sesi"), el("span", `${sessions.length} sesi`));
+  const head = el("div");
+  head.className = "km-subhead";
+  head.append(el("span", "Sesi"), el("span", `${sessions.length} sesi`));
 
-    const now = new Date();
-    const list = el("ul");
-    list.className = "km-list";
+  const now = new Date();
+  const list = el("ul");
+  list.className = "km-list";
 
-    for (const session of sessions) {
-      const item = el("li");
-      item.className = "km-row";
-      item.dataset.open = String(session.is_open);
+  for (const session of sessions) {
+    const item = el("li");
+    item.className = "km-row";
+    item.dataset.open = String(session.is_open);
 
-      const link = el("a") as HTMLAnchorElement;
-      link.href = `/s/${session.id}`;
+    const link = el("a") as HTMLAnchorElement;
+    link.href = `/s/${session.id}`;
 
-      const title = el("span", session.title);
-      title.className = "km-row-title";
+    const title = el("span", session.title ?? "");
+    title.className = "km-row-title";
 
-      const state = el(
-        "span",
-        session.is_open === 1 ? "Masih buka" : "Sudah ditutup",
-      );
-      state.className = "km-row-state";
+    const state = el(
+      "span",
+      session.is_open === 1 ? "Masih buka" : "Sudah ditutup",
+    );
+    state.className = "km-row-state";
 
-      const created = new Date(`${session.created_at.replace(" ", "T")}Z`);
-      const time = el("span", relativeTime(created, now));
-      time.className = "km-row-time";
+    const created = new Date(
+      `${(session.created_at ?? "").replace(" ", "T")}Z`,
+    );
+    const time = el("span", relativeTime(created, now));
+    time.className = "km-row-time";
 
-      link.append(title, state, time);
-      item.append(link);
-      list.append(item);
-    }
-    root.append(head, list);
-  };
-
-  void loader(root, "/api/sessions", draw)();
+    link.append(title, state, time);
+    item.append(link);
+    list.append(item);
+  }
+  root.append(head, list);
 };
 
 const fieldNames = ["title", "place1", "place2", "place3", "place4"];
@@ -408,4 +371,4 @@ const sessions = document.querySelector<HTMLElement>("[data-sessions]");
 
 if (create) mountCreate(create);
 if (session) void mountSession(session);
-if (sessions) mountLanding(sessions);
+if (sessions) void mountLanding(sessions);

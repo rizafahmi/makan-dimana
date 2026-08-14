@@ -4,10 +4,8 @@ import { seedSession, startServer } from "./harness.ts";
 
 let server: Awaited<ReturnType<typeof startServer>>;
 
-const sessionShell =
-  /<div data-session="true" data-id="[0-9a-z]{7}" data-state="loading"><p role="status">Memuat\.\.\.<\/p><\/div>/;
-const landingShell =
-  /<div data-sessions="true" data-state="loading"><p role="status">Memuat\.\.\.<\/p><\/div>/;
+const sessionShell = /<div data-session="true" data-id="[0-9a-z]{7}"><\/div>/;
+const landingShell = /<div data-sessions="true"><\/div>/;
 
 before(async () => {
   server = await startServer();
@@ -17,13 +15,14 @@ after(async () => {
   await server.stop();
 });
 
-test("/s/[id] ships a loading shell carrying no session data", async () => {
+test("/s/[id] ships an empty shell, with no session data and no loading state", async () => {
   const path = await seedSession(server.origin, { title: "Rahasia sesi" });
   const html = await (await fetch(`${server.origin}${path}`)).text();
 
   assert.equal(html.includes("Rahasia sesi"), false);
   assert.equal(html.includes("Warteg"), false);
   assert.equal(html.includes("Padang"), false);
+  assert.equal(html.includes("Memuat"), false);
 
   assert.match(html, sessionShell);
   assert.match(html, /<noscript>/);
@@ -40,11 +39,12 @@ test("/s/[id] serves a valid unknown id as a shell and 404s a malformed one", as
   }
 });
 
-test("/ ships a loading shell carrying no session data", async () => {
+test("/ ships an empty shell, with no session data and no loading state", async () => {
   await seedSession(server.origin, { title: "Judul rahasia" });
   const html = await (await fetch(server.origin)).text();
 
   assert.equal(html.includes("Judul rahasia"), false);
+  assert.equal(html.includes("Memuat"), false);
 
   assert.match(html, landingShell);
   assert.match(html, /href="\/new"/);

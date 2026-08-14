@@ -85,7 +85,6 @@
   --focus-outline: 2px solid var(--accent);
   --focus-offset: 2px;
 
-  --spin-duration: 0.8s;
   --disabled-opacity: 0.6;
 }
 
@@ -592,54 +591,11 @@ button.km-place[data-voted="true"] {
   color: var(--muted);
 }
 
-[data-state="loading"]:has(> p[role="status"]:first-child) {
-  opacity: var(--disabled-opacity);
-}
-
-[data-state="loading"] button.km-place {
-  opacity: var(--disabled-opacity);
-}
-
-[data-state="loading"] button.km-place[data-acting="true"] {
-  opacity: 1;
-}
-
-[data-state="loading"] > p[role="status"]:first-child::before {
-  content: "";
-  width: 16px;
-  height: 16px;
-  flex: none;
-  border: 2px solid var(--accent);
-  border-top-color: transparent;
-  border-radius: 50%;
-  animation: spin var(--spin-duration) linear infinite;
-}
-
-[data-state="error"],
 [data-state="missing"] {
   align-items: flex-start;
 }
 
-[data-state="error"] {
-  border-top: var(--border-flag) solid var(--danger);
-  padding-top: var(--space-4);
-}
-
-[data-state="error"] > p[role="status"] {
-  color: var(--danger-text);
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(1turn);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  [data-state="loading"] > p[role="status"]:first-child::before {
-    animation: none;
-  }
-
   .km-button,
   button.km-place {
     transition: none;
