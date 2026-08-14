@@ -15,6 +15,7 @@ test("a lone creator document becomes a session row", () => {
     },
   ]);
 
+  assert.ok(session);
   assert.equal(session.title, "Makan siang Jumat");
   assert.equal(session.created_at, "2026-08-14 03:00:00");
   assert.equal(session.is_open, 1);
@@ -47,6 +48,7 @@ test("tallies sum every document's ups minus downs, unclamped", () => {
     },
   ]);
 
+  assert.ok(session);
   assert.equal(session.place1_votes, 2);
   assert.equal(session.place2_votes, -1);
 });
@@ -73,6 +75,7 @@ test("a session is closed when any document closed it", () => {
     },
   ]);
 
+  assert.ok(session);
   assert.equal(session.is_open, 0);
 });
 
@@ -98,7 +101,25 @@ test("the lower device id wins when two documents claim a title", () => {
     },
   ]);
 
+  assert.ok(session);
   assert.equal(session.title, "Sesi pertama");
   assert.equal(session.place1_name, "Warteg");
   assert.equal(session.created_at, "2026-08-14 03:00:00");
+});
+
+test("a session with no creator document is not held at all", () => {
+  const votesOnly = mergeDocs([
+    {
+      device: "b7c2",
+      title: null,
+      places: null,
+      created_at: null,
+      closed: false,
+      up: { "1": 1 },
+      down: {},
+    },
+  ]);
+
+  assert.equal(votesOnly, null);
+  assert.equal(mergeDocs([]), null);
 });

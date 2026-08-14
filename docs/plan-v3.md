@@ -98,10 +98,14 @@ under `astro/tsconfigs/strict`.
 
 `mergeDocs(docs)` returns v2's row shape: `title`, `is_open` as 1 or 0,
 `place1_name` through `place4_name` with unused slots null, `place1_votes` through
-`place4_votes`, and `created_at`.
+`place4_votes`, and `created_at` - or null when no document carries a title.
 
 - Identity comes from the document with a non-null title; on a tie the lower device
   id wins, so a client-generated id collision is convergent
+- No title anywhere means no identity, so the merge returns null instead of a row
+  with a null title and no places. A device can hold vote documents for a session
+  whose creator document has not reached it yet, and an empty document set is the
+  same case; both are `data-state="missing"`. Callers must narrow the return
 - `is_open` is 0 when any document has `closed` true
 - Each slot's tally is the sum of every `up` minus the sum of every `down`, unclamped
 
@@ -148,8 +152,8 @@ the client, then the service worker.
 
 - [ ] `mergeDocs` turns a lone creator document into a session row
 - [ ] `mergeDocs` sums PN counters across documents, unclamped and possibly negative
-- [ ] `mergeDocs` closes when any document is closed, and picks the lower device id
-      when two documents both claim a title
+- [ ] `mergeDocs` closes when any document is closed, picks the lower device id when
+      two documents both claim a title, and returns null when none does
 - [ ] `emptyDoc`, `applyVote` and `applyClose` as pure document transforms
 - [ ] Id generation moves to `id.ts` on `crypto.getRandomValues`
 - [ ] `session_docs` replaces `vote_sessions`; `GET` and `POST /api/sessions/[id]`
