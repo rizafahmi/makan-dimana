@@ -5,6 +5,9 @@ type Row = { id: string; title: string; is_open: number; created_at: string };
 type State = (state: string, text: string) => void;
 
 const timeout = 10_000;
+const holdDelay = 500;
+const hintText =
+  "Ketuk baris buat vote. Tahan atau Shift+klik buat batalin.";
 const loadingText = "Memuat...";
 const failureText = "Gagal memuat. Periksa koneksi.";
 const missingText = "Sesi tidak ditemukan";
@@ -102,6 +105,44 @@ const mountSession = (root: HTMLElement) => {
     return node;
   }
 
+  function voteRow(slot: string) {
+    const node = el("button");
+    node.dataset.action = "upvote";
+    node.dataset.place = slot;
+
+    let held = false;
+    let timer = 0;
+
+    const stop = () => {
+      if (timer !== 0) clearTimeout(timer);
+      timer = 0;
+    };
+
+    node.addEventListener("pointerdown", () => {
+      held = false;
+      stop();
+      timer = window.setTimeout(() => {
+        held = true;
+        void mutate({ action: "downvote", place: slot });
+      }, holdDelay);
+    });
+    for (const name of ["pointerup", "pointerleave", "pointercancel"]) {
+      node.addEventListener(name, stop);
+    }
+    node.addEventListener("click", (event) => {
+      stop();
+      if (held) {
+        held = false;
+        return;
+      }
+      void mutate({
+        action: event.shiftKey ? "downvote" : "upvote",
+        place: slot,
+      });
+    });
+    return node;
+  }
+
   function focusKey() {
     const active = document.activeElement;
     if (!(active instanceof HTMLElement)) return null;
@@ -183,47 +224,46 @@ const mountSession = (root: HTMLElement) => {
     for (const place of others) {
       const slot = String(place.slot);
       const item = el("li");
-      item.className = isOpen ? "km-place km-bar" : "km-place";
-      item.dataset.place = slot;
-      item.dataset.votes = String(place.votes);
-      item.dataset.open = open;
+      const row = isOpen ? voteRow(slot) : item;
+
+      row.className = isOpen ? "km-place km-bar" : "km-place";
+      row.dataset.place = slot;
+      row.dataset.votes = String(place.votes);
+      row.dataset.open = open;
 
       if (isOpen) {
         const fill = el("span");
         fill.className = "km-fill";
         fill.style.width = `${place.share}%`;
-        item.append(fill);
+        row.append(fill);
       }
 
       const name = el("span", place.name);
       name.className = "km-place-name";
-      item.append(name);
+      row.append(name);
 
       if (isOpen) {
         const pct = el("span", `${place.share}%`);
         pct.className = "km-pct";
-        item.append(pct);
+        row.append(pct);
       }
 
       const votes = el("span", String(place.votes));
       votes.className = "km-place-votes";
       const unit = el("span", " suara");
       unit.className = "km-sr";
-      item.append(votes, unit);
+      row.append(votes, unit);
 
-      if (isOpen) {
-        const pair = el("div");
-        pair.className = "km-vote";
-        const up = control("Naik", "upvote", slot);
-        up.dataset.dir = "up";
-        const down = control("Turun", "downvote", slot);
-        down.dataset.dir = "down";
-        pair.append(up, down);
-        item.append(pair);
-      }
+      if (row !== item) item.append(row);
       list.append(item);
     }
     root.append(list);
+
+    if (isOpen) {
+      const hint = el("p", hintText);
+      hint.className = "km-hint";
+      root.append(hint);
+    }
 
     if (note !== null) {
       const tally = el("p", note);
@@ -261,6 +301,11 @@ const mountSession = (root: HTMLElement) => {
 
     const key = focusKey();
     root.dataset.state = "loading";
+    if (fields.place !== undefined) {
+      root
+        .querySelector(`button[data-place="${fields.place}"]`)
+        ?.setAttribute("data-acting", "true");
+    }
     for (const node of root.querySelectorAll("button")) node.disabled = true;
 
     try {

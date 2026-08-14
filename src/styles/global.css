@@ -109,7 +109,7 @@ p {
   margin: 0;
 }
 
-:where(.km-button, .km-input, .km-row a, .km-vote button):focus-visible {
+:where(.km-button, .km-input, .km-row a, button.km-place):focus-visible {
   outline: var(--focus-outline);
   outline-offset: var(--focus-offset);
 }
@@ -473,46 +473,30 @@ p {
   color: var(--faint);
 }
 
-.km-vote {
-  display: flex;
-  gap: var(--space-1);
-  flex: none;
-}
-
-.km-vote button {
-  min-width: var(--tap-vote);
-  height: var(--tap-vote);
-  flex: none;
-  padding: 0 var(--space-3);
-  border: 0;
-  border-radius: var(--radius);
+button.km-place {
+  width: 100%;
+  min-height: var(--tap-vote);
+  border-top: 0;
+  border-right: 0;
+  border-bottom: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
   cursor: pointer;
-  font: var(--weight-display) var(--size-mono-fine)/1 var(--font-sans);
-  letter-spacing: var(--tracking-kicker);
-  text-transform: uppercase;
+  transition: background 120ms linear;
 }
 
-.km-vote button[data-dir="up"] {
-  background: var(--accent);
-  color: var(--text-on-accent);
+button.km-place:hover:not(:disabled) {
+  background: var(--surface);
 }
 
-.km-vote button[data-dir="up"]:hover:not(:disabled) {
-  background: var(--accent-hover);
-}
-
-.km-vote button[data-dir="down"] {
-  background: var(--tint-text-10);
-  color: var(--text);
-}
-
-.km-vote button[data-dir="down"]:hover:not(:disabled) {
-  background: var(--hairline);
-}
-
-.km-vote button:disabled {
-  opacity: var(--disabled-opacity);
+button.km-place:disabled {
   cursor: default;
+}
+
+.km-hint {
+  font: var(--weight-body) var(--size-mono-fine)/1.4 var(--font-mono);
+  color: var(--faint);
 }
 
 .km-share {
@@ -564,6 +548,14 @@ p {
 
 [data-state="loading"] {
   opacity: var(--disabled-opacity);
+}
+
+[data-state="loading"] button.km-place {
+  opacity: var(--disabled-opacity);
+}
+
+[data-state="loading"] button.km-place[data-acting="true"] {
+  opacity: 1;
 }
 
 [data-state="loading"] > p[role="status"]:first-child::before {
