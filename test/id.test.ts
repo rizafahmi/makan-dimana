@@ -13,3 +13,12 @@ test("generated ids are canonical and reach every letter of the alphabet", () =>
 
   assert.equal(new Set(ids.join("")).size, alphabet.length);
 });
+
+test("normalizeSessionId canonicalizes valid ids and rejects malformed ones", () => {
+  assert.equal(normalizeSessionId("ABCl2Ox"), "abc120x");
+  assert.equal(normalizeSessionId("abc12qx"), "abc12qx");
+  assert.equal(normalizeSessionId("abc12u3"), null);
+  assert.equal(normalizeSessionId("short"), null);
+  assert.equal(normalizeSessionId("toolong1"), null);
+  assert.equal(normalizeSessionId("abc12!3"), null);
+});
