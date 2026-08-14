@@ -52,3 +52,47 @@ test("a title on the list reads as one line, not one letter per line", async ({
 
   expect(await lines(page, ".km-row-title")).toBe(1);
 });
+
+const unbroken = "RumahMakanPadangSederhanaBundoKanduangAsli";
+
+const sideways = (page: Page) =>
+  page.evaluate(() => {
+    const doc = document.documentElement;
+    return doc.scrollWidth - doc.clientWidth;
+  });
+
+test("no page scrolls sideways at a phone viewport, whatever it holds", async ({
+  page,
+}) => {
+  await holdRelay(page);
+  await createSession(page, unbroken, [unbroken, "Sate"]);
+  const winner = page.locator("button.km-place", { hasText: unbroken });
+
+  const spill: Record<string, number> = {};
+  spill["/s/[id]"] = await sideways(page);
+
+  await winner.click();
+  await page.getByRole("button", { name: "Tutup sesi" }).click();
+  await expect(page.getByText("Pemenang")).toBeVisible();
+  spill["/s/[id] closed"] = await sideways(page);
+
+  await page.goto("/");
+  await expect(page.locator("[data-sessions]")).toHaveAttribute(
+    "data-state",
+    "ready",
+  );
+  spill["/"] = await sideways(page);
+
+  await page.goto("/new");
+  await page.getByLabel("Tempat 1").fill("W".repeat(61));
+  await page.getByRole("button", { name: "Bikin sesi" }).click();
+  await expect(page.locator("#place1-error")).toBeVisible();
+  spill["/new"] = await sideways(page);
+
+  expect(spill).toEqual({
+    "/s/[id]": 0,
+    "/s/[id] closed": 0,
+    "/": 0,
+    "/new": 0,
+  });
+});

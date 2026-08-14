@@ -133,6 +133,7 @@ p {
 
 .km-h1 {
   margin: 0;
+  overflow-wrap: break-word;
   font: var(--weight-display) var(--size-h1-phone)/var(--leading-display)
     var(--font-sans);
   letter-spacing: var(--tracking-display);
