@@ -77,23 +77,39 @@ them again. The service worker is the one that cannot be worked around: registra
 silently no-ops, so the phone syncs and votes fine but a reload while offline dies on
 the browser's own error page - the exact failure `4-local-first` exists to remove.
 
-So put the demo behind a real HTTPS origin. A tunnel - `cloudflared tunnel --url
-http://localhost:4321`, or ngrok - is enough, and once the worker has installed and the
-data is local you can kill the tunnel: the worker serves the shell from cache without
-ever touching the network, which is what `test/offline.spec.ts` pins. Killing the
-tunnel *is* the offline demo.
+So put the demo behind a real HTTPS origin. Tailscale Funnel is the least fragile way
+to get one: it gives a *stable* hostname with a real certificate, free and without
+owning a domain.
 
-Two traps, both of which end the demo rather than degrading it:
+    tailscale up
+    pnpm build
+    node dist/server/entry.mjs
+    tailscale funnel --bg 4321
 
-- **A quick tunnel mints a new hostname every run.** Service worker registrations and
-  IndexedDB are per-origin, so restarting the tunnel between setup and the talk hands
-  you a fresh device with no worker and no sessions. Set the URL up once and leave it
-  running, or use a named tunnel with a stable hostname.
-- **Set up while you still have internet.** The tunnel needs a connection to establish,
-  and the shell only reaches the cache on the second navigation, since the first visit
-  installs the worker without being controlled by it. Load each device twice on the
-  venue wifi before you need it.
+That publishes `https://<machine>.<tailnet>.ts.net`, which is the same address at every
+rehearsal and on the day. `tailscale funnel off` takes it down, and taking it down *is*
+the offline demo: the worker keeps serving the shell from cache with nothing on the
+wire, which is what `test/offline.spec.ts` pins.
 
-Both devices can sit on the tunnel URL. They converge either way - the relay is one
-server and one SQLite file whichever origin reaches it - but sharing an origin keeps
-the QR, the share link and the worker scope all agreeing with each other.
+Funnel is public to the whole internet, which cuts both ways. It means the QR on screen
+is scannable by the room - a genuinely good moment, since the audience joins the vote on
+their own phones and the tallies move live. It also means an unauthenticated vote app is
+briefly on the open internet, and `PLAN.md` is explicit that possession of a link is not
+an access boundary. Use `tailscale serve` instead of `funnel` for the same stable HTTPS
+hostname restricted to your own tailnet, if you would rather the room could not join.
+Funnel needs a `funnel` node attribute in the tailnet policy file; enabling it from the
+CLI adds that for you the first time, so do it before the day rather than on stage.
+
+A `cloudflared tunnel --url http://localhost:4321` quick tunnel also works and needs no
+account and no domain, but it mints a **new random hostname every run**. Service worker
+registrations and IndexedDB are per-origin, so restarting it between setup and the talk
+hands you a fresh device with no worker and no sessions. Prefer a stable hostname; if
+you must use a quick tunnel, start it once and do not touch it.
+
+One trap survives whichever you pick: **set up while you still have internet, and load
+each device twice.** The first visit installs the worker without being controlled by it,
+so the shell only reaches the cache on the second navigation.
+
+Both devices can sit on the same origin. They converge either way - the relay is one
+server and one SQLite file whichever origin reaches it - but sharing an origin keeps the
+QR, the share link and the worker scope all agreeing with each other.
