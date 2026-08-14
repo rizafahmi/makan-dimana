@@ -404,3 +404,5 @@ const sessions = document.querySelector<HTMLElement>("[data-sessions]");
 if (create) mountCreate(create);
 if (session) void mountSession(session);
 if (sessions) void mountLanding(sessions);
+
+if ("serviceWorker" in navigator) void navigator.serviceWorker.register("/sw.js");
