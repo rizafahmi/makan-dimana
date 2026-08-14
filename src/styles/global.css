@@ -319,7 +319,7 @@ p {
 }
 
 .km-row-title {
-  flex: 1;
+  flex: 1 1 100%;
   min-width: 0;
   overflow-wrap: anywhere;
   font: var(--weight-display) var(--size-place)/1.2 var(--font-sans);
@@ -344,6 +344,10 @@ p {
 }
 
 @media (min-width: 40rem) {
+  .km-row-title {
+    flex-basis: 0;
+  }
+
   .km-row-time {
     width: var(--col-timestamp);
   }
