@@ -71,6 +71,19 @@ export const cuttableStream = async (page: Page, origin: string) => {
   };
 };
 
+export const refuseSync = async (page: Page, times: number) => {
+  let refused = 0;
+  await page.route("**/api/**", async (route) => {
+    const { pathname } = new URL(route.request().url());
+    if (pathname.endsWith("/events") || refused >= times) {
+      return route.continue();
+    }
+    refused += 1;
+    return route.abort("internetdisconnected");
+  });
+  return () => refused;
+};
+
 export const holdRelay = async (page: Page) => {
   let refuse = () => {};
   const refused = new Promise<void>((resolve) => {

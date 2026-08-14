@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { createSession, cuttableStream } from "./browser.ts";
+import { createSession, cuttableStream, refuseSync } from "./browser.ts";
 
 const settle = 1500;
 
@@ -460,6 +460,218 @@ test("a device whose stream dropped picks up what it slept through", async ({
   });
 
   await stream.stop();
+  await first.close();
+  await second.close();
+});
+
+test("a device whose first attempt after reconnecting is refused still converges", async ({
+  browser,
+}) => {
+  const first = await browser.newContext();
+  const second = await browser.newContext();
+  const desktop = await first.newPage();
+  const phone = await second.newPage();
+
+  const link = await afterSync(desktop, () =>
+    createSession(desktop, "Makan bergantian"),
+  );
+  await afterSync(phone, () => phone.goto(link));
+  await expect(warteg(phone)).toHaveAttribute("data-votes", "0");
+
+  await first.setOffline(true);
+  await second.setOffline(true);
+
+  await warteg(phone).click();
+  await expect(warteg(phone)).toHaveAttribute("data-votes", "1");
+
+  await second.setOffline(false);
+  await phone.waitForTimeout(settle);
+
+  await warteg(desktop).click();
+  await expect(warteg(desktop)).toHaveAttribute("data-votes", "1");
+
+  const refusals = await refuseSync(desktop, 1);
+  await first.setOffline(false);
+
+  await expect(warteg(desktop)).toHaveAttribute("data-votes", "2", {
+    timeout: 20_000,
+  });
+  await expect(warteg(phone)).toHaveAttribute("data-votes", "2", {
+    timeout: 20_000,
+  });
+  expect(refusals()).toBe(1);
+
+  await first.close();
+  await second.close();
+});
+
+test("a vote whose push was refused still reaches the relay, with nothing else touching the page", async ({
+  page,
+}) => {
+  const link = await afterSync(page, () => createSession(page, "Makan ulang"));
+  const endpoint = link.replace("/s/", "/api/sessions/");
+
+  const refusals = await refuseSync(page, 1);
+  await warteg(page).click();
+  await expect(warteg(page)).toHaveAttribute("data-votes", "1");
+
+  await expect
+    .poll(
+      async () => {
+        const held = await page.request.get(endpoint);
+        const docs = (await held.json()) as string[];
+        return docs.reduce(
+          (sum, doc) =>
+            sum +
+            ((JSON.parse(doc) as { up: Record<string, number> }).up["1"] ?? 0),
+          0,
+        );
+      },
+      { timeout: 15_000 },
+    )
+    .toBe(1);
+
+  expect(refusals()).toBe(1);
+});
+
+test("a push the relay answers with an error is not mistaken for one that landed", async ({
+  page,
+}) => {
+  const link = await afterSync(page, () => createSession(page, "Makan gagal"));
+  const endpoint = link.replace("/s/", "/api/sessions/");
+
+  let refused = 0;
+  await page.route("**/api/**", async (route) => {
+    const request = route.request();
+    const { pathname } = new URL(request.url());
+    if (request.method() === "POST" && pathname === endpoint && refused < 1) {
+      refused += 1;
+      return route.fulfill({
+        status: 503,
+        contentType: "application/json",
+        body: '{"error":"down"}',
+      });
+    }
+    return route.continue();
+  });
+
+  await warteg(page).click();
+  await expect(warteg(page)).toHaveAttribute("data-votes", "1");
+
+  await expect
+    .poll(
+      async () => {
+        const held = await page.request.get(endpoint);
+        const docs = (await held.json()) as string[];
+        return docs.reduce(
+          (sum, doc) =>
+            sum +
+            ((JSON.parse(doc) as { up: Record<string, number> }).up["1"] ?? 0),
+          0,
+        );
+      },
+      { timeout: 15_000 },
+    )
+    .toBe(1);
+
+  expect(refused).toBe(1);
+});
+
+test("a device the relay refuses writes from still takes in everyone else's", async ({
+  browser,
+}) => {
+  const first = await browser.newContext();
+  const second = await browser.newContext();
+  const a = await first.newPage();
+  const b = await second.newPage();
+
+  const link = await afterSync(a, () => createSession(a, "Makan sepihak"));
+  await afterSync(b, () => b.goto(link));
+  await expect(warteg(b)).toHaveAttribute("data-votes", "0");
+
+  await b.route("**/api/**", async (route) =>
+    route.request().method() === "POST"
+      ? route.fulfill({
+          status: 403,
+          contentType: "application/json",
+          body: '{"error":"forbidden"}',
+        })
+      : route.continue(),
+  );
+
+  await warteg(a).click();
+  await expect(warteg(a)).toHaveAttribute("data-votes", "1");
+
+  await expect(warteg(b)).toHaveAttribute("data-votes", "1", {
+    timeout: 15_000,
+  });
+
+  await first.close();
+  await second.close();
+});
+
+test("a device coming back to its tab picks up what it slept through", async ({
+  browser,
+}) => {
+  const first = await browser.newContext();
+  const second = await browser.newContext();
+  const a = await first.newPage();
+  const b = await second.newPage();
+
+  const link = await afterSync(a, () => createSession(a, "Makan bangun"));
+  await b.route("**/api/sessions/*/events", (route) => route.abort());
+  await afterSync(b, () => b.goto(link));
+  await expect(warteg(b)).toHaveAttribute("data-votes", "0");
+
+  await warteg(a).click();
+  await expect(warteg(a)).toHaveAttribute("data-votes", "1");
+
+  await b.waitForTimeout(settle);
+  await expect(warteg(b)).toHaveAttribute("data-votes", "0");
+
+  await b.evaluate(() =>
+    document.dispatchEvent(new Event("visibilitychange")),
+  );
+
+  await expect(warteg(b)).toHaveAttribute("data-votes", "1", {
+    timeout: 10_000,
+  });
+
+  await first.close();
+  await second.close();
+});
+
+test("a device whose stream was refused outright gets one back", async ({
+  browser,
+}) => {
+  const first = await browser.newContext();
+  const second = await browser.newContext();
+  const a = await first.newPage();
+  const b = await second.newPage();
+
+  const link = await afterSync(a, () => createSession(a, "Makan pulih"));
+
+  let down = true;
+  let attempts = 0;
+  await b.route("**/api/sessions/*/events", async (route) => {
+    attempts += 1;
+    return down
+      ? route.fulfill({ status: 502, body: "down" })
+      : route.continue();
+  });
+
+  await afterSync(b, () => b.goto(link));
+  await expect(warteg(b)).toHaveAttribute("data-votes", "0");
+  down = false;
+
+  await warteg(a).click();
+  await expect(warteg(a)).toHaveAttribute("data-votes", "1");
+
+  await expect(warteg(b)).toHaveAttribute("data-votes", "1", {
+    timeout: 20_000,
+  });
+  expect(attempts).toBeGreaterThan(1);
+
   await first.close();
   await second.close();
 });

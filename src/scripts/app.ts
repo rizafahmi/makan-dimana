@@ -17,7 +17,13 @@ import {
 import { relativeTime, utcTimestamp } from "../lib/time.ts";
 import { validateCreate } from "../lib/validate.ts";
 import { allSessions, deviceId, readSession, writeSession } from "./idb.ts";
-import { exchange, keepListening, keepSynced, pushDoc } from "./sync.ts";
+import {
+  exchange,
+  keepListening,
+  keepSynced,
+  pushDoc,
+  retrying,
+} from "./sync.ts";
 
 type Session = NonNullable<ReturnType<typeof mergeDocs>>;
 
@@ -260,11 +266,15 @@ const mountSession = async (root: HTMLElement) => {
     restore(focused);
   }
 
+  const resync = retrying(sync);
+
   async function change(transform: (doc: SessionDoc) => SessionDoc) {
     const next = transform(ownDoc(stored.docs, device));
     stored = { id, docs: upsertDoc(stored.docs, next) };
     await writeSession(stored);
-    void pushDoc(id, device, next);
+    void pushDoc(id, device, next).then((sent) => {
+      if (!sent) resync();
+    });
   }
 
   async function vote(slot: number, delta: number) {
@@ -279,17 +289,20 @@ const mountSession = async (root: HTMLElement) => {
   }
 
   async function sync() {
-    const pulled = await exchange(id, device, ownDoc(stored.docs, device));
-    const next = applyPulled(stored, pulled, device);
-    if (next === null) return;
-    stored = next;
-    await writeSession(stored);
-    repaint();
+    const answer = await exchange(id, device, ownDoc(stored.docs, device));
+    if (answer === null) return false;
+    const next = applyPulled(stored, answer.docs, device);
+    if (next !== null) {
+      stored = next;
+      await writeSession(stored);
+      repaint();
+    }
+    return answer.sent;
   }
 
   render();
-  keepSynced(() => void sync());
-  keepListening(id, () => void sync());
+  keepSynced(resync);
+  keepListening(id, resync);
 };
 
 const mountLanding = async (root: HTMLElement) => {
@@ -345,21 +358,22 @@ const mountLanding = async (root: HTMLElement) => {
   }
 
   async function sync() {
-    const pulled = await Promise.all(
+    const answers = await Promise.all(
       stored.map((session) =>
         exchange(session.id, device, ownDoc(session.docs, device)),
       ),
     );
     stored = stored.map((session, index) => ({
       id: session.id,
-      docs: mergePulled(session.docs, pulled[index], device),
+      docs: mergePulled(session.docs, answers[index]?.docs ?? [], device),
     }));
     await Promise.all(stored.map(writeSession));
     draw();
+    return answers.every((answer) => answer !== null && answer.sent);
   }
 
   draw();
-  keepSynced(() => void sync());
+  keepSynced(retrying(sync));
 };
 
 const fieldNames = ["title", "place1", "place2", "place3", "place4"];
