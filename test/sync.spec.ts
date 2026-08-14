@@ -6,11 +6,15 @@ const settle = 1500;
 const warteg = (page: Page) =>
   page.locator("button.km-place", { hasText: "Warteg Bahari" });
 
+const isPull = (url: string) => {
+  const { pathname } = new URL(url);
+  return pathname.startsWith("/api/sessions/") && !pathname.endsWith("/events");
+};
+
 const afterSync = async <T>(page: Page, act: () => Promise<T>) => {
   const pulled = page.waitForResponse(
     (response) =>
-      response.request().method() === "GET" &&
-      new URL(response.url()).pathname.startsWith("/api/sessions/"),
+      response.request().method() === "GET" && isPull(response.url()),
   );
   const value = await act();
   await pulled;
@@ -23,7 +27,7 @@ test("a device pushes its own document before it pulls anyone else's", async ({
   const calls: string[] = [];
   page.on("request", (request) => {
     const { pathname } = new URL(request.url());
-    if (pathname.startsWith("/api/")) {
+    if (isPull(request.url()) || request.method() === "POST") {
       calls.push(`${request.method()} ${pathname}`);
     }
   });
@@ -92,32 +96,6 @@ test("a vote cast offline reaches the other device once the network is back", as
   await afterSync(b, () => second.setOffline(false));
 
   await afterSync(a, () => a.reload());
-  await expect(warteg(a)).toHaveAttribute("data-votes", "1");
-
-  await first.close();
-  await second.close();
-});
-
-test("coming back to the tab picks up what changed, with no reload", async ({
-  browser,
-}) => {
-  const first = await browser.newContext();
-  const second = await browser.newContext();
-  const a = await first.newPage();
-  const b = await second.newPage();
-
-  const link = await afterSync(a, () => createSession(a, "Makan pagi tim"));
-  await afterSync(b, () => b.goto(link));
-  await warteg(b).click();
-  await expect(warteg(b)).toHaveAttribute("data-votes", "1");
-  await afterSync(b, () => b.reload());
-
-  await expect(warteg(a)).toHaveAttribute("data-votes", "0");
-
-  await afterSync(a, () =>
-    a.evaluate(() => document.dispatchEvent(new Event("visibilitychange"))),
-  );
-
   await expect(warteg(a)).toHaveAttribute("data-votes", "1");
 
   await first.close();
@@ -255,7 +233,7 @@ test("a sync that pulls nothing new leaves focus where the user put it", async (
 
   await warteg(page).focus();
   await afterSync(page, () =>
-    page.evaluate(() => document.dispatchEvent(new Event("visibilitychange"))),
+    page.evaluate(() => window.dispatchEvent(new Event("online"))),
   );
   await page.waitForTimeout(settle);
 
@@ -270,7 +248,7 @@ test("a sync that pulls nothing new leaves the just-voted flash alone", async ({
   await expect(warteg(page)).toHaveAttribute("data-voted", "true");
 
   await afterSync(page, () =>
-    page.evaluate(() => document.dispatchEvent(new Event("visibilitychange"))),
+    page.evaluate(() => window.dispatchEvent(new Event("online"))),
   );
   await page.waitForTimeout(settle);
 
@@ -287,14 +265,10 @@ test("a sync that brings a change repaints under the user without moving them", 
 
   const link = await afterSync(a, () => createSession(a, "Makan ramai"));
   await afterSync(b, () => b.goto(link));
-  await warteg(b).click();
-  await expect(warteg(b)).toHaveAttribute("data-votes", "1");
-  await afterSync(b, () => b.reload());
 
   await warteg(a).focus();
-  await afterSync(a, () =>
-    a.evaluate(() => document.dispatchEvent(new Event("visibilitychange"))),
-  );
+  await warteg(b).click();
+  await expect(warteg(b)).toHaveAttribute("data-votes", "1");
 
   await expect(warteg(a)).toHaveAttribute("data-votes", "1");
   await expect(warteg(a)).toBeFocused();
@@ -317,16 +291,13 @@ test("a sync that repeats the other device's document leaves the page alone", as
   await expect(warteg(b)).toHaveAttribute("data-votes", "1");
   await afterSync(b, () => b.reload());
 
-  await afterSync(a, () =>
-    a.evaluate(() => document.dispatchEvent(new Event("visibilitychange"))),
-  );
   await expect(warteg(a)).toHaveAttribute("data-votes", "1");
 
   await warteg(a).click();
   await expect(warteg(a)).toHaveAttribute("data-voted", "true");
 
   await afterSync(a, () =>
-    a.evaluate(() => document.dispatchEvent(new Event("visibilitychange"))),
+    a.evaluate(() => window.dispatchEvent(new Event("online"))),
   );
   await a.waitForTimeout(settle);
 
@@ -390,4 +361,47 @@ test("a local write is published without waiting for the next sync", async ({
   await page.getByRole("button", { name: "Tutup sesi" }).click();
   await expect(page.getByText("Sudah ditutup")).toBeVisible();
   await closed;
+});
+
+test("a vote on one device shows up on the other with nobody touching it", async ({
+  browser,
+}) => {
+  const first = await browser.newContext();
+  const second = await browser.newContext();
+  const a = await first.newPage();
+  const b = await second.newPage();
+
+  const link = await afterSync(a, () => createSession(a, "Makan serentak"));
+
+  const live = b.waitForResponse((response) =>
+    new URL(response.url()).pathname.endsWith("/events"),
+  );
+  await afterSync(b, () => b.goto(link));
+  await live;
+  await expect(warteg(b)).toHaveAttribute("data-votes", "0");
+
+  await warteg(a).click();
+  await expect(warteg(a)).toHaveAttribute("data-votes", "1");
+
+  await expect(warteg(b)).toHaveAttribute("data-votes", "1");
+
+  await first.close();
+  await second.close();
+});
+
+test("a device told about its own write does not repaint under itself", async ({
+  page,
+}) => {
+  await afterSync(page, () => createSession(page, "Makan sendiri"));
+
+  await afterSync(page, () => warteg(page).click());
+
+  await expect(warteg(page)).toHaveAttribute("data-votes", "1");
+  await expect(warteg(page)).toHaveAttribute("data-voted", "true");
+  await expect(warteg(page)).toBeFocused();
+
+  await page.waitForTimeout(settle);
+
+  await expect(warteg(page)).toHaveAttribute("data-voted", "true");
+  await expect(warteg(page)).toBeFocused();
 });

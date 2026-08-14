@@ -17,7 +17,7 @@ import {
 import { relativeTime, utcTimestamp } from "../lib/time.ts";
 import { validateCreate } from "../lib/validate.ts";
 import { allSessions, deviceId, readSession, writeSession } from "./idb.ts";
-import { exchange, keepSynced, pushDoc } from "./sync.ts";
+import { exchange, keepListening, keepSynced, pushDoc } from "./sync.ts";
 
 type Session = NonNullable<ReturnType<typeof mergeDocs>>;
 
@@ -289,6 +289,7 @@ const mountSession = async (root: HTMLElement) => {
 
   render();
   keepSynced(() => void sync());
+  keepListening(id, () => void sync());
 };
 
 const mountLanding = async (root: HTMLElement) => {

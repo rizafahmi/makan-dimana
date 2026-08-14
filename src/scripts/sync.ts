@@ -11,9 +11,11 @@ const post = (id: string, device: string, doc: SessionDoc) =>
 export const keepSynced = (run: () => void) => {
   run();
   addEventListener("online", run);
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") run();
-  });
+};
+
+export const keepListening = (id: string, run: () => void) => {
+  const stream = new EventSource(`${endpoint(id)}/events`);
+  stream.addEventListener("message", run);
 };
 
 export const pushDoc = async (id: string, device: string, doc: SessionDoc) => {

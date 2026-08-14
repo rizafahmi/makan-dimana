@@ -76,3 +76,20 @@ test("the list renders with every data request refused, and says nothing about i
   await expect(titles(page)).toHaveText(["Makan siang tim"]);
   expect(complaints).toEqual([]);
 });
+
+test("the list holds no stream open, whatever it holds", async ({ page }) => {
+  await createSession(page, "Makan siang tim");
+  await createSession(page, "Makan malam tim");
+  await page.goto("/");
+
+  const streams: string[] = [];
+  page.on("request", (request) => {
+    if (request.resourceType() === "eventsource") streams.push(request.url());
+  });
+
+  await page.reload();
+  await expect(titles(page)).toHaveCount(2);
+  await page.waitForTimeout(pastTheSecondBoundary);
+
+  expect(streams).toEqual([]);
+});

@@ -48,7 +48,15 @@ test("a sync request is never cached, and never answered from a cache", async ({
   const link = await createSession(page, "Makan sore tim");
   const endpoint = link.replace("/s/", "/api/sessions/");
   await controlled(page);
+
+  const streamed: string[] = [];
+  page.on("request", (request) => {
+    const { pathname } = new URL(request.url());
+    if (pathname.endsWith("/events")) streamed.push(pathname);
+  });
+
   await page.goto(link);
+  await expect.poll(() => streamed).toEqual([`${endpoint}/events`]);
 
   const pulled = await page.evaluate(
     (path) => fetch(path).then((response) => response.json()),
