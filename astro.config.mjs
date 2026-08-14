@@ -6,4 +6,7 @@ import node from "@astrojs/node";
 export default defineConfig({
   output: "server",
   adapter: node({ mode: "standalone", bodySizeLimit: 16384 }),
+  security: {
+    allowedDomains: [{ hostname: "**.ts.net", protocol: "https" }],
+  },
 });

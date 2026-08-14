@@ -4,6 +4,20 @@ import { postForm, putDoc, startServer } from "./harness.ts";
 
 let server: Awaited<ReturnType<typeof startServer>>;
 
+const tunnelHost = "demo.tailnet.ts.net";
+
+const proxiedPost = (
+  id: string,
+  headers: Record<string, string>,
+  fields: Record<string, string>,
+) =>
+  fetch(`${server.origin}/api/sessions/${id}`, {
+    method: "POST",
+    headers,
+    body: new URLSearchParams(fields),
+    redirect: "manual",
+  });
+
 before(async () => {
   server = await startServer();
 });
@@ -92,6 +106,53 @@ test("POST /api/sessions/[id] refuses a malformed id and a body it cannot read",
   }
 
   const stored = await fetch(`${server.origin}/api/sessions/re1ect0`);
+  assert.deepEqual(await stored.json(), []);
+});
+
+test("POST /api/sessions/[id] takes a document from behind an HTTPS proxy", async () => {
+  const doc = '{"device":"a3f1","title":"Sesi lewat terowongan"}';
+  const res = await proxiedPost(
+    "f0rwrd1",
+    {
+      "x-forwarded-proto": "https",
+      "x-forwarded-host": tunnelHost,
+      origin: `https://${tunnelHost}`,
+    },
+    { device: "a3f1", doc },
+  );
+
+  assert.equal(res.status, 204);
+
+  const stored = await fetch(`${server.origin}/api/sessions/f0rwrd1`);
+  assert.deepEqual(await stored.json(), [doc]);
+});
+
+test("POST /api/sessions/[id] still refuses a genuinely cross-site request", async () => {
+  const doc = '{"device":"a3f1","title":"Sesi curian"}';
+  const forged: Record<string, string>[] = [
+    {
+      "x-forwarded-proto": "https",
+      "x-forwarded-host": "demo.tailnet.example.com",
+      origin: "https://demo.tailnet.example.com",
+    },
+    {
+      "x-forwarded-proto": "https",
+      "x-forwarded-host": tunnelHost,
+      origin: "https://jahat.example.com",
+    },
+    {
+      "x-forwarded-proto": "https",
+      "x-forwarded-host": `${tunnelHost}.jahat.example.com`,
+      origin: `https://${tunnelHost}.jahat.example.com`,
+    },
+  ];
+
+  for (const headers of forged) {
+    const res = await proxiedPost("f0rg3d1", headers, { device: "a3f1", doc });
+    assert.equal(res.status, 403, `expected 403 for ${JSON.stringify(headers)}`);
+  }
+
+  const stored = await fetch(`${server.origin}/api/sessions/f0rg3d1`);
   assert.deepEqual(await stored.json(), []);
 });
 

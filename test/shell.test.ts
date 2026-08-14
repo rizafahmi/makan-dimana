@@ -77,6 +77,19 @@ test("the detail shell shows the canonical share url and a labelled QR", async (
   assert.match(html, /data-share="true"/);
 });
 
+test("the share url behind an HTTPS proxy is the address the room can reach", async () => {
+  const path = await seedSession(server.origin);
+  const host = "demo.tailnet.ts.net";
+  const html = await (
+    await fetch(`${server.origin}${path}`, {
+      headers: { "x-forwarded-proto": "https", "x-forwarded-host": host },
+    })
+  ).text();
+
+  assert.ok(html.includes(`https://${host}${path}`));
+  assert.equal(html.includes(`${server.origin}${path}`), false);
+});
+
 test("the create and session pages link back to the session list", async () => {
   const path = await seedSession(server.origin);
 
