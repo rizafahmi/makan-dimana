@@ -171,11 +171,33 @@ reads and writes the same row as the canonical one.
 
 ## Conventions
 
-- The device id is `crypto.randomUUID()`, generated once and persisted in IndexedDB
 - A sync POST carries both `device` and `doc`. Neither is validated beyond being a
   string: a device names itself, and the server takes its word for it
 - The client talks to a narrow store port so the IndexedDB adapter stays the only
-  untestable part
+  untestable part. A stored session is `{ id, docs }` - a session's id and the
+  documents this device holds for it, at most one per device
+- `src/lib/store.ts` is the pure half and holds every decision. `upsertDoc(docs, doc)`
+  returns a new array with this device's document replaced or a new device's appended,
+  which is how both a local vote and a sync pull land. `ownDoc(docs, device)` returns
+  this device's document or a fresh `emptyDoc(device)`, so `applyVote` and `applyClose`
+  always have something to transform. `localList(sessions)` merges each stored session,
+  attaches its id and drops the ones that merge to null
+- `src/scripts/idb.ts` is the plumbing half and is nothing but I/O: `allSessions()`,
+  `readSession(id)`, `writeSession(session)` and `deviceId()`. It is client-only, so it
+  sits beside `app.ts` rather than in `src/lib`, and it holds no logic - anything
+  resembling a decision belongs in the pure half
+- The device id is `crypto.randomUUID()`, generated once and persisted in IndexedDB's
+  `meta` store. Get-or-create stays in the adapter rather than becoming a pure
+  function: the only decision in it is a `??`, and persisting the result is its whole
+  substance. One read-write transaction covers the read and the write, so two callers
+  racing on a fresh device cannot mint two ids
+- `localList` orders by `created_at` descending, matching v2's `listSessions`, and
+  breaks a tie on the session id, descending. `datetime('now')` has one-second
+  resolution, so ties are ordinary rather than exotic. The id carries no time
+  information and is not pretending to; it is there because the order has to be total,
+  or a list of same-second sessions reshuffles on every render. `listSessions`'s
+  `LIMIT 20` does not come across - it existed to bound a list of everyone's sessions,
+  and this one is only ever this device's
 - `data-state` goes straight to `ready`. `loading`, `error` and the retry button are
   gone; `missing` remains and now also covers a session this device does not hold
 - The service worker is `public/sw.js` with a hand-bumped `version` constant as its
@@ -207,7 +229,7 @@ a temporary server-side create would be code written only to be deleted.
       become the relay, and the e2e suites are rewritten onto it in the same commit
 - [x] Playwright and `@playwright/test` are installed and `pnpm test` chains both
       runners
-- [ ] The store port and its IndexedDB adapter, with the device id
+- [x] The store port and its IndexedDB adapter, with the device id
 - [ ] `/s/[id]` renders from the local store and votes write locally
 - [ ] `/` renders the local list; `GET /api/sessions` is deleted
 - [ ] `/new` creates locally and navigates to the new session
