@@ -184,7 +184,9 @@ reads and writes the same row as the canonical one.
   which is how both a local vote and a sync pull land. `ownDoc(docs, device)` returns
   this device's document or a fresh `emptyDoc(device)`, so `applyVote` and `applyClose`
   always have something to transform. `localList(sessions)` merges each stored session,
-  attaches its id and drops the ones that merge to null
+  attaches its id and drops the ones that merge to null. `applyPulled(session, pulled,
+  device)` is a whole exchange's worth of decision: the stored session a pull produces,
+  or null when it produced nothing to store and nothing to draw
 - `src/scripts/idb.ts` is the plumbing half and is nothing but I/O: `allSessions()`,
   `readSession(id)`, `writeSession(session)` and `deviceId()`. It is client-only, so it
   sits beside `app.ts` rather than in `src/lib`, and it holds no logic - anything
@@ -271,6 +273,27 @@ reads and writes the same row as the canonical one.
   null for it and for anything carrying no device id, and `mergePulled` drops it.
   A bare `JSON.parse` per element, or trusting the array as a whole, hands that one
   document the power to break every other device's merge
+- A sync repaints only when the pull landed something. `mergePulled` hands back the
+  array it was given when nothing applies, so `applyPulled` compares it by reference
+  and returns null. Nothing anywhere edits a document array in place - every transform
+  returns a new one - so the reference is an answer rather than a coincidence. The
+  first version repainted unconditionally, which on the two-device demo fires on every
+  `visibilitychange` and costs three things at once: focus drops to `BODY`, the
+  just-voted flash goes with it because `draw` clears `voted` on its way out, and a tap
+  whose `pointerdown` and `pointerup` straddle the rebuild is swallowed by a button
+  that no longer exists
+- A pulled document identical to one already held lands nothing either. Without that
+  half the reference check only ever helps a device syncing alone: in the settled
+  two-device state every pull returns the other device's unchanged document, `upsertDoc`
+  replaces it with an equal copy, and the new array reads as news. Identity is
+  `JSON.stringify` on both sides, which can only be wrong in the harmless direction -
+  two equal documents whose keys were written in a different order compare unequal and
+  cost one repaint
+- A repaint nobody asked for puts focus back where it was, exactly as a vote's does.
+  `vote` and `sync` share one `repaint`: read the focused slot, render, restore it
+- The landing list is the exception and repaints on every sync, changed or not. Its
+  rows render `relativeTime` and sync is the only thing that ever runs on that page,
+  so that repaint is what keeps `baru saja` from still saying so an hour later
 - The landing page fans its sessions out in parallel and repaints once when they
   have all answered. They are independent rows on the relay with no ordering between
   them, so serial would only multiply the round trips, and the list is bounded by
