@@ -11,7 +11,7 @@ import { localList, mergePulled, ownDoc, upsertDoc } from "../lib/store.ts";
 import { relativeTime, utcTimestamp } from "../lib/time.ts";
 import { validateCreate } from "../lib/validate.ts";
 import { allSessions, deviceId, readSession, writeSession } from "./idb.ts";
-import { exchange } from "./sync.ts";
+import { exchange, keepSynced } from "./sync.ts";
 
 type Session = NonNullable<ReturnType<typeof mergeDocs>>;
 
@@ -269,7 +269,7 @@ const mountSession = async (root: HTMLElement) => {
   }
 
   render();
-  void sync();
+  keepSynced(() => void sync());
 };
 
 const mountLanding = async (root: HTMLElement) => {

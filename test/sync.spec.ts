@@ -15,14 +15,15 @@ const settle = 1500;
 const warteg = (page: Page) =>
   page.locator("button.km-place", { hasText: "Warteg Bahari" });
 
-const afterSync = async (page: Page, act: () => Promise<unknown>) => {
+const afterSync = async <T>(page: Page, act: () => Promise<T>) => {
   const pulled = page.waitForResponse(
     (response) =>
       response.request().method() === "GET" &&
       new URL(response.url()).pathname.startsWith("/api/sessions/"),
   );
-  await act();
+  const value = await act();
   await pulled;
+  return value;
 };
 
 test("a device pushes its own document before it pulls anyone else's", async ({
@@ -70,6 +71,57 @@ test("two devices each keep the other's vote, and their own", async ({
 
   await expect(warteg(a)).toHaveAttribute("data-votes", "2");
   await expect(a.getByText("2 suara masuk · 2 tempat")).toBeVisible();
+
+  await first.close();
+  await second.close();
+});
+
+test("a vote cast offline reaches the other device once the network is back", async ({
+  browser,
+}) => {
+  const first = await browser.newContext();
+  const second = await browser.newContext();
+  const a = await first.newPage();
+  const b = await second.newPage();
+
+  const link = await afterSync(a, () => createSession(a, "Makan malam tim"));
+  await afterSync(b, () => b.goto(link));
+  await expect(warteg(b)).toHaveAttribute("data-votes", "0");
+
+  await second.setOffline(true);
+  await warteg(b).click();
+  await expect(warteg(b)).toHaveAttribute("data-votes", "1");
+
+  await afterSync(b, () => second.setOffline(false));
+
+  await afterSync(a, () => a.reload());
+  await expect(warteg(a)).toHaveAttribute("data-votes", "1");
+
+  await first.close();
+  await second.close();
+});
+
+test("coming back to the tab picks up what changed, with no reload", async ({
+  browser,
+}) => {
+  const first = await browser.newContext();
+  const second = await browser.newContext();
+  const a = await first.newPage();
+  const b = await second.newPage();
+
+  const link = await afterSync(a, () => createSession(a, "Makan pagi tim"));
+  await afterSync(b, () => b.goto(link));
+  await warteg(b).click();
+  await expect(warteg(b)).toHaveAttribute("data-votes", "1");
+  await afterSync(b, () => b.reload());
+
+  await expect(warteg(a)).toHaveAttribute("data-votes", "0");
+
+  await afterSync(a, () =>
+    a.evaluate(() => document.dispatchEvent(new Event("visibilitychange"))),
+  );
+
+  await expect(warteg(a)).toHaveAttribute("data-votes", "1");
 
   await first.close();
   await second.close();
