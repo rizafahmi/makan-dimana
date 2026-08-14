@@ -12,6 +12,16 @@ export type SessionDoc = {
   down: Counters;
 };
 
+export const emptyDoc = (device: string) => ({
+  device,
+  title: null,
+  places: null,
+  created_at: null,
+  closed: false,
+  up: {},
+  down: {},
+});
+
 export const mergeDocs = (docs: SessionDoc[]) => {
   const claimants = docs.filter((doc) => doc.title !== null);
   if (claimants.length === 0) return null;
