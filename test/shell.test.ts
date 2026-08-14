@@ -76,3 +76,16 @@ test("the detail shell shows the canonical share url and a labelled QR", async (
   assert.ok(html.includes("Kode QR untuk sesi ini"));
   assert.match(html, /data-share="true"/);
 });
+
+test("the create and session pages link back to the session list", async () => {
+  const path = await seedSession(server.origin);
+
+  for (const route of ["/new", path]) {
+    const html = await (await fetch(`${server.origin}${route}`)).text();
+    assert.match(
+      html,
+      /<a[^>]+href="\/"[^>]*>Semua sesi<\/a>/,
+      `back link on ${route}`,
+    );
+  }
+});

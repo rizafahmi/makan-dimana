@@ -114,7 +114,7 @@ p {
   margin: 0;
 }
 
-:where(.km-button, .km-input, .km-row a, button.km-place):focus-visible {
+:where(.km-button, .km-input, .km-row a, .km-back, button.km-place):focus-visible {
   outline: var(--focus-outline);
   outline-offset: var(--focus-offset);
 }
@@ -158,6 +158,22 @@ p {
 
 .km-back:hover {
   color: var(--text);
+}
+
+.km-nav {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.km-nav::before {
+  content: "";
+  width: 0.45em;
+  height: 0.45em;
+  border-left: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg);
 }
 
 .km-sr {
