@@ -431,6 +431,33 @@ p {
   text-transform: uppercase;
 }
 
+.km-bar {
+  position: relative;
+  overflow: hidden;
+}
+
+.km-bar > *:not(.km-fill):not(.km-sr) {
+  position: relative;
+}
+
+.km-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: var(--tint-text-10);
+  pointer-events: none;
+}
+
+.km-pct {
+  width: 44px;
+  flex: none;
+  text-align: right;
+  font: var(--weight-body) var(--size-mono-fine)/1 var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--faint);
+}
+
 .km-vote {
   display: flex;
   gap: var(--space-1);

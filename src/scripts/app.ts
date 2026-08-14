@@ -1,4 +1,4 @@
-import { listPlaces, winnerView } from "../lib/session.ts";
+import { listPlaces, tallyView, winnerView } from "../lib/session.ts";
 import { relativeTime } from "../lib/time.ts";
 
 type Row = { id: string; title: string; is_open: number; created_at: string };
@@ -145,17 +145,30 @@ const mountSession = (root: HTMLElement) => {
     root.append(head, heading);
 
     const places = listPlaces(session);
+    const tally = tallyView(places);
     const { winners, label, note } = winnerView(places, isOpen);
+
+    const summary = el("p", tally.text);
+    summary.className = "km-tally";
+    root.append(summary);
+
     const list = el("ul");
     list.className = "km-list";
 
-    for (const place of places) {
+    for (const place of tally.places) {
       const slot = String(place.slot);
       const item = el("li");
-      item.className = "km-place";
+      item.className = isOpen ? "km-place km-bar" : "km-place";
       item.dataset.place = slot;
       item.dataset.votes = String(place.votes);
       item.dataset.open = open;
+
+      if (isOpen) {
+        const fill = el("span");
+        fill.className = "km-fill";
+        fill.style.width = `${place.share}%`;
+        item.append(fill);
+      }
 
       const name = el("span", place.name);
       name.className = "km-place-name";
@@ -166,6 +179,12 @@ const mountSession = (root: HTMLElement) => {
         const kicker = el("strong", label);
         kicker.className = "km-kicker";
         item.append(kicker);
+      }
+
+      if (isOpen) {
+        const pct = el("span", `${place.share}%`);
+        pct.className = "km-pct";
+        item.append(pct);
       }
 
       const votes = el("span", String(place.votes));

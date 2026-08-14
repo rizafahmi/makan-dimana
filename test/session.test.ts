@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { listPlaces, winnerView, winningSlots } from "../src/lib/session.ts";
+import {
+  listPlaces,
+  tallyView,
+  winnerView,
+  winningSlots,
+} from "../src/lib/session.ts";
 
 const row = (fields: Record<string, unknown>) => ({
   place1_name: "Warteg",
@@ -79,4 +84,40 @@ test("winnerView carries the Indonesian winner copy for each outcome", () => {
   );
   assert.deepEqual(open.winners, []);
   assert.equal(open.note, null);
+});
+
+test("tallyView carries the total, the Indonesian tally line and each share", () => {
+  const counted = tallyView(
+    listPlaces(row({ place1_votes: 5, place2_votes: 2 })),
+  );
+  assert.equal(counted.total, 7);
+  assert.equal(counted.text, "7 suara masuk · 2 tempat");
+  assert.deepEqual(
+    counted.places.map((place) => place.share),
+    [71, 29],
+  );
+
+  const three = tallyView(
+    listPlaces(
+      row({
+        place1_votes: 4,
+        place2_votes: 2,
+        place3_name: "Sate",
+        place3_votes: 0,
+      }),
+    ),
+  );
+  assert.equal(three.text, "6 suara masuk · 3 tempat");
+  assert.deepEqual(
+    three.places.map((place) => place.share),
+    [67, 33, 0],
+  );
+
+  const empty = tallyView(listPlaces(row({})));
+  assert.equal(empty.total, 0);
+  assert.equal(empty.text, "0 suara masuk · 2 tempat");
+  assert.deepEqual(
+    empty.places.map((place) => place.share),
+    [0, 0],
+  );
 });

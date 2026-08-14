@@ -33,3 +33,15 @@ export const winnerView = (places: Place[], isOpen: boolean) => {
         : "Seri!";
   return { winners, label: "Pemenang", note };
 };
+
+export const tallyView = (places: Place[]) => {
+  const total = places.reduce((sum, place) => sum + place.votes, 0);
+  return {
+    total,
+    text: `${total} suara masuk · ${places.length} tempat`,
+    places: places.map((place) => ({
+      ...place,
+      share: total === 0 ? 0 : Math.round((place.votes / total) * 100),
+    })),
+  };
+};
