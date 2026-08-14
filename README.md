@@ -48,6 +48,8 @@ Running the tests does. The browser suites drive a real Chromium through Playwri
 
 Every page is rendered on demand by `@astrojs/node` and ships no session data. The data comes from IndexedDB in the browser, so nothing on screen is waiting on a request, and there is no UI framework. `/api/sessions/[id]` is an opaque relay: it stores one document per session per device, hands them all back on request, and never parses one. Combining them into a session is a pure function that runs on the client. `/api/sessions/[id]/events` holds a stream open and says when that session changed, without saying what changed - a device votes, publishes, and every other device open on that session pulls and repaints on its own.
 
+A sync fires on load, on `online`, on coming back to the tab, and on anything the event stream says; an attempt that fails is retried on a bounded backoff until one succeeds, which is why a device that reconnects into a network that is not quite up yet still converges. Nothing polls, and nothing on screen mentions the network.
+
 The service worker in `public/sw.js` precaches the shell, so with the network gone the app still loads, still renders and still takes votes; those votes reach the other devices at the next sync. It caches no data at all and declines `/api/**` outright. Its `version` constant is the cache name and is bumped by hand - after changing anything the shell ships, bump it or unregister the worker, `astro dev` included.
 
 ## Commands

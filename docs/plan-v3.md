@@ -50,13 +50,19 @@ Merging is a pure function on the client.
   shipped without one, not a rule this branch has to keep
 - The QR stays server-only and online-only. Offline the share block shows URL text.
   An offline QR cannot resolve a scan, so it is not worth a client-side bundle
-- Sync fires on load, on `online`, on a server-sent event saying that session changed,
-  and on every reconnection of the stream that carries those events. No polling, no
-  sync control - see `docs/adr/0008-changes-arrive-over-an-event-stream.md`.
-  `visibilitychange` is gone: it only ever fired when a device came back to a tab, so a
-  phone and a laptop both sitting there visible never learned about each other. What it
-  did cover - a phone that slept through a change - is covered by the reconnection
-  instead, because a phone that sleeps drops its stream
+- Sync fires on load, on `online`, on `visibilitychange` into visible, on a server-sent
+  event saying that session changed, and on every reconnection of the stream that
+  carries those events. No polling, no sync control - see
+  `docs/adr/0008-changes-arrive-over-an-event-stream.md`. `visibilitychange` was taken
+  out when the stream landed and is back beside it: it only ever fires when a device
+  comes back to a tab, so it cannot carry the demo on its own, but it costs nothing
+  when it does not fire and it is the cheapest cover for a phone that slept
+- A trigger is a reason to try, not the try itself. An attempt that failed is retried
+  on `retryDelay`'s schedule until one succeeds or the schedule runs out, which is not
+  polling: a poll fires because time passed, a retry exists only because something
+  failed, and a converged device that can reach the relay makes no request between
+  triggers. Bounded at six attempts, 500ms doubling to 16 seconds; a fresh trigger
+  restarts the chain
 - The UI says nothing about the network. No staleness line, no offline banner, no age
   stamps. An unreachable session reuses `data-state="missing"`
 - Sync bodies stay form-encoded, with `device` carrying this device's id and `doc`
@@ -237,8 +243,16 @@ see `docs/adr/0008-changes-arrive-over-an-event-stream.md`.
   sits beside `app.ts` rather than in `src/lib`, and it holds no logic - anything
   resembling a decision belongs in the pure half
 - `src/scripts/sync.ts` is the other plumbing module: `exchange(id, device, own)` is
-  the round trip and `keepSynced(run)` is the triggers. Both are client-only and
-  neither decides anything - what a pull does to the store is `mergePulled`'s call
+  the round trip, `pushDoc` is a local write's publish, `keepSynced(run)` and
+  `keepListening(id, run)` are the triggers, and `retrying(run)` is the timer that
+  re-runs an attempt that failed. All client-only, and none of them decides anything -
+  what a pull does to the store is `mergePulled`'s call, and how long to wait before
+  trying again is `retryDelay`'s
+- `src/lib/retry.ts` holds that schedule and nothing else. `retryDelay(attempt)` is the
+  delay before that attempt, or null once the schedule is spent, which is what makes
+  the retry bounded rather than a timer nobody can stop. It is pure and unit-tested for
+  the same reason every other decision here is: a browser is a bad place to find out
+  that a backoff never terminates
 - The device id is `generateDeviceId()`, generated once and persisted in IndexedDB's
   `meta` store. Get-or-create stays in the adapter rather than becoming a pure
   function: the only decision in it is a `??`, and persisting the result is its whole
@@ -316,10 +330,13 @@ see `docs/adr/0008-changes-arrive-over-an-event-stream.md`.
   both go through `change`, which writes to IndexedDB and then fires `pushDoc` without
   waiting for it. Before that the only push was a sync's, so a vote sat on the device
   until the next trigger and the relay had nothing to notify anyone about - a stream
-  is worth nothing if writes do not reach the server that feeds it. The push is fire
-  and forget in both directions: it does not block the repaint, and it swallows its
-  own failure exactly as `exchange` does, because the next sync republishes the same
-  document anyway. It is deliberately not `exchange`: pulling here would repaint a
+  is worth nothing if writes do not reach the server that feeds it. The push does not
+  block the repaint - it is fired without being waited on - but it is no longer forgotten:
+  a push that did not land kicks the retry loop. Swallowing it on the reasoning that the
+  next sync republishes the same document is only true if a next sync happens, and a vote
+  made while the relay was unreachable was measured still missing from the relay eight
+  seconds after it came back, on a page that stayed open and online throughout. It is
+  deliberately still not `exchange` on the happy path: pulling there would repaint a
   device in the middle of its own tap for no news
 - A pulled document never overwrites this device's own. `mergePulled` skips any
   document carrying this device's id rather than re-applying the device's own copy
@@ -369,12 +386,22 @@ see `docs/adr/0008-changes-arrive-over-an-event-stream.md`.
   them, so serial would only multiply the round trips, and the list is bounded by
   being this device's alone - see `0005-the-landing-list-is-local.md` - so the
   fan-out needs no concurrency limit
-- An exchange that throws resolves to no documents. A failure is silent by design:
-  nothing on screen, nothing in the console, no retry - the next trigger is the retry
+- An exchange says whether it worked. It answers null when it could not read the relay,
+  and otherwise the pulled documents beside whether this device's own document landed;
+  a push answering a non-2xx counts as not landed. Returning an empty array for both
+  "unreachable" and "nothing new" is what made a device give up silently and stay
+  stale, which is the whole of the convergence bug this branch shipped with. The pull
+  still runs when the push was refused, so a relay that will not take this device's
+  writes - the funnel's `checkOrigin` 403 is the live example - does not also cost it
+  everyone else's. Failure stays silent on screen: no banner, no console, nothing about
+  the network in the UI. It is just no longer silent to the code
 - The session page subscribes to `/api/sessions/[id]/events` and pulls on every
-  `message`. `EventSource` owns the reconnection, so nothing here retries; a stream
-  that will not connect leaves an app that behaves exactly as it does offline, which
-  is to say correctly. The landing page subscribes to nothing - see
+  `message`. `EventSource` owns the reconnection for a transient failure and retries it
+  for as long as the page lives, so nothing here duplicates that. What it does not own
+  is a fatal one: a non-200 - a proxy answering 502 while the relay restarts - closes
+  the stream by specification, one attempt and no retry, and that was measured. A
+  stream found in `readyState === CLOSED` is rebuilt on `retryDelay`'s schedule. The
+  landing page subscribes to nothing - see
   `docs/adr/0008-changes-arrive-over-an-event-stream.md`
 - `EventSource` owning the reconnection is also what reports it: it fires `open` for
   every connection it makes, so the second and every later one means the stream was
@@ -382,7 +409,10 @@ see `docs/adr/0008-changes-arrive-over-an-event-stream.md`.
   first `open` is skipped - it lands beside the load sync, and syncing there is a
   whole extra push and pull on every page load, which the push-before-pull spec sees
   and fails on. It is the reason the greeting is a named `ready` event: `open` is the
-  reconnect signal, so the greeting must not double as one
+  reconnect signal, so the greeting must not double as one. The skip is keyed on
+  whether the page has been without a stream rather than on which connection this is,
+  so a first connection that failed fatally is a gap like any other and the connection
+  that replaces it syncs
 - A spec that wants the stream to drop under a page runs the events request through a
   local proxy it can destroy the socket of - `cuttableStream` in `test/browser.ts`,
   which rewrites the request's URL with `route.continue`. Routing alone cannot do it:
@@ -390,10 +420,17 @@ see `docs/adr/0008-changes-arrive-over-an-event-stream.md`.
   been open for seconds. Cutting the connection rather than the network is the point,
   since `setOffline` would fire `online` on the way back and that is the trigger the
   spec has to rule out
-- A spec that wants a sync without a stream event dispatches `online` on `window`,
-  where it is listened for. It stands in for the trigger that is hard to stage rather
-  than for a real network transition, the way the `visibilitychange` dispatch it
-  replaced did
+- A spec that wants a sync without a stream event dispatches `online` on `window`, or
+  `visibilitychange` on `document`, where each is listened for. Both stand in for a
+  trigger that is hard to stage rather than for a real network or visibility
+  transition
+- A spec that wants the reconnect edge a real radio has runs the page's API requests
+  through a route that refuses the first of them - `refuseSync` in `test/browser.ts`.
+  `context.setOffline(false)` is not that edge: it restores the network and fires
+  `online` in the same instant, so the request the trigger makes always succeeds and
+  the sequence that broke two real devices passes on it. What broke them is that
+  `online` arrives before DNS and routing do, and one refused request is the whole of
+  it
 - Browser suites are `test/*.spec.ts` under `@playwright/test`; everything else stays
   `test/*.test.ts` under `node --test`. Two browser contexts are two devices, which
   is what makes convergence testable at all
@@ -466,6 +503,18 @@ a temporary server-side create would be code written only to be deleted.
       session; the relay now publishes only a write that stored different bytes. And
       syncing on the first `open` rather than only on later ones costs an extra push
       and pull on every page load, which the push-before-pull spec catches
+- [x] An attempt that failed is retried, so a trigger is a reason to try rather than
+      the only try. A third two-device run over the funnel lost a phone's votes for
+      good: the phone voted offline and pushed on the way back, the desktop voted while
+      still offline, and the desktop came back to its own tally and stayed there. Three
+      things were wrong at once and each was measured on its own. `exchange` answered
+      an empty array for "could not reach the relay" and for "nothing new" alike, and
+      nothing retried, so one refused request at the reconnect edge was permanent. A
+      push that answered a non-2xx was counted as landed. And a local write's push
+      swallowed its failure, so a vote made while the relay was down never reached it -
+      still missing eight seconds after the relay came back, on a page that never left.
+      `visibilitychange` returns as a trigger beside the stream rather than instead of
+      it, and a stream the relay closed outright is rebuilt on the same schedule
 
 ## Manual checks
 
@@ -476,6 +525,13 @@ a temporary server-side create would be code written only to be deleted.
 - Load `/`, tick Offline in DevTools, reload, and confirm the list and a session both
   render
 - Vote offline on two devices, reconnect both, and confirm the tallies combine
+- Vote offline on the phone, bring the phone back while the laptop is still offline,
+  vote on the laptop, then bring the laptop back, and confirm both screens end on the
+  combined tally - the ordering is the point, because the laptop's own pull is the only
+  thing that can rescue it
+- Restart the relay with both devices on a session, vote on one, and confirm the other
+  moves without being touched - the stream each device had is gone and has to come back
+  on its own
 - Close on one device offline while the other votes, reconnect, and confirm closed wins
 - Confirm the `<noscript>` message still appears with JavaScript disabled
 - Open the app from a second device over LAN HTTP and create a session there, which is

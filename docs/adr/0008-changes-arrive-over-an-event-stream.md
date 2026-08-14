@@ -19,7 +19,19 @@ publishes immediately, and the stream is what tells the other device to pull.
 The stream is a notification channel, not a dependency. Correctness and first paint
 both still come entirely from IndexedDB. With the stream refused the app behaves
 exactly as it does offline, which is to say correctly: it renders, it takes votes, and
-they reach everyone else at the next load, `online`, or connection that succeeds.
+they reach everyone else at the next load, `online`, `visibilitychange`, connection
+that succeeds, or retry of an attempt that did not.
+
+That last one was added after a second two-device run over the funnel lost a phone's
+votes outright, and it is the half this ADR originally got wrong. A trigger was
+treated as an attempt: `exchange` caught every throw and returned an empty array, so
+"I could not reach the relay" and "the relay has nothing new" arrived as the same
+answer, and nothing retried either. `online` fires when the interface comes up, which
+is routinely before DNS and routing work, so the one request that trigger was worth
+failed and the device stayed stale until it was reloaded. Measured: one refused
+request at the reconnect edge, and a device sat on its own tally indefinitely with
+the network fully back. A trigger is now a reason to try, and trying until it works
+is separate from being told to.
 
 ## Considered options
 
@@ -27,15 +39,23 @@ they reach everyone else at the next load, `online`, or connection that succeeds
   alive, and no proxy in the path can buffer it. Rejected because the interval is a
   choice between a demo that looks broken and a phone that spends the talk waking its
   radio, and because a request every few seconds against an idle session is the exact
-  shape of load this branch removed from the first paint.
+  shape of load this branch removed from the first paint. The retry added later does
+  not reopen this: a poll fires because time passed and keeps firing when everything
+  is fine, and a retry exists only because an attempt failed and stops the moment one
+  succeeds. A converged device that can reach the relay makes no request at all
+  between triggers, which is the property polling gives up.
 - **A visible sync control.** A button, or a pull-to-refresh. Honest about the network
   and costs nothing when nobody presses it. Rejected twice: the branch's own rule is
   that the UI says nothing about the network - no staleness line, no offline banner,
   no age stamps - and a refresh button is all three at once. It also makes the demo a
   lie, because the point being shown is two screens agreeing without anyone asking.
 - **Keep `visibilitychange` and add the push.** The smallest possible fix, and it
-  covers a phone coming back to the tab. Rejected because it does not cover the demo:
-  two screens sitting side by side are both visible, so neither ever fires it.
+  covers a phone coming back to the tab. Rejected as *the* fix, because it does not
+  cover the demo: two screens sitting side by side are both visible, so neither ever
+  fires it. It is back as one trigger among several, which is a different claim and
+  reverses nothing decided here - it was never polling and never a control, it costs
+  nothing when it does not fire, and it is the cheapest cover for the sleeping phone
+  this ADR listed as an open gap.
 - **WebSockets.** Bidirectional, so the push could ride the same connection. Rejected
   for what it costs to get nothing extra: the traffic here is one-way, `EventSource`
   reconnects on its own where a socket needs that written by hand, and the existing
@@ -73,20 +93,54 @@ they reach everyone else at the next load, `online`, or connection that succeeds
   a second push and pull on every page load - which is what the push-before-pull spec
   measures, and it fails with the whole extra pair in it. This is also why the greeting
   is a named `ready` event rather than a `message`: `open` carries the reconnect signal
-  now, and the greeting has to stay silent for it to mean only that.
-- What is left uncovered is the device that never reconnects, and that is a narrower
-  set than it sounds. A device whose stream stayed up cannot have missed anything,
-  because the stream is what carries the news; a device that had a stream and lost it
-  reconnects and pulls, whether it was asleep for a second or an hour, and whether or
-  not `online` fires on the way back. What is left is the device whose page loaded
-  with the network already down: its load sync failed, it never had a first `open` to
-  spend, and the connection it eventually makes is that first one, which is skipped.
-  It still relies on `online` firing, and if it does not fire, that device stays stale
-  until it is reloaded. There is no timer and no visible control to fall back on -
-  both were rejected, and this does not reopen them. It is the same class of staleness
-  the branch already accepts, and the local-first posture is what makes it survivable
-  rather than a bug: what is on screen is this device's own copy, not a stale cache of
-  someone else's.
+  now, and the greeting has to stay silent for it to mean only that. What is skipped is
+  narrower than "the first one": it is an `open` on a page that has not yet been without
+  a stream. A connection that failed before it ever opened counts as being without one,
+  so the connection that finally succeeds seconds later does sync - the load sync it
+  would have duplicated is long past, and the window between them is exactly what
+  nothing else can replay.
+- A trigger fires an attempt, and an attempt that fails is retried on `retryDelay`'s
+  schedule - 500ms doubling to 16 seconds, six attempts, then it stops. The schedule is
+  a pure function in `src/lib/retry.ts` with a unit suite; the timer that reads it is
+  plumbing in `src/scripts/sync.ts`. Bounded matters in both directions: a device that
+  is genuinely unreachable stops asking rather than burning a radio for the length of
+  the talk, and a device whose network came back a second late gets six more chances
+  instead of one. A fresh trigger during a chain restarts it, because a trigger is new
+  evidence and the wait so far was for the old one.
+- Failure had to become sayable before any of that could work. `exchange` returns the
+  pulled documents beside whether this device's own document landed, or null when it
+  could not read the relay at all, and a push that answers a non-2xx counts as not
+  landed - a 503 from a restarting relay and a 403 from a misconfigured funnel are
+  both writes that did not happen, and answering 204-shaped success to them is how a
+  device convinces itself it is converged while its votes sit at home. The pull still
+  runs when the push was refused, so a device the relay will not take writes from
+  keeps taking everyone else's in rather than going blind in both directions at once.
+- The write path had the same bug and needed the same answer. A local write publishes
+  immediately and swallowed its own failure, on the reasoning that the next sync would
+  republish the same document - true only if a next sync happens. Measured: a vote made
+  while the relay was unreachable was still missing from the relay eight seconds after
+  it came back, with the page open and online the whole time. A push that did not land
+  now kicks the retry loop, which pushes and pulls; it stays fire-and-forget, so the
+  repaint never waits on the network.
+- A stream can die in a way `EventSource` does not recover from. A non-200 - a proxy
+  answering 502 while the relay restarts is the ordinary way to get one - is fatal by
+  specification: `readyState` goes to `CLOSED`, and measured, that is one attempt and
+  no retry, ever. Every device on the session would be left with load, `online` and
+  `visibilitychange` as its only triggers, which two laptops sitting side by side never
+  fire. A `CLOSED` stream is rebuilt on the same bounded schedule, and because the page
+  has been without a stream by then, the reopen syncs.
+- What is left uncovered is a device that stops being reachable for longer than the
+  schedule and then becomes reachable again silently - no `online`, no visibility
+  change, no stream reconnection. On a session page that is close to unreachable in
+  practice, because `EventSource` retries a transient failure on its own for as long
+  as the page lives and the reopen is a sync; the landing page holds no stream and is
+  the real exposure. Uncovered too: a stream that is open and dead. A socket that a
+  NAT or proxy dropped without telling either end sits in `readyState === OPEN` while
+  nothing can flow, and there is nothing on the client to time out against, because
+  the heartbeat is a `:` comment and `EventSource` never surfaces comments to script.
+  Convergence survives that through the other triggers; liveness through that stream
+  does not. There is still no timer and no visible control - both were rejected, and
+  none of this reopens them.
 - The landing page does not subscribe. One stream per held session is an unbounded
   number of connections for a list whose only live element is a relative timestamp,
   and it already syncs on load and on `online`. A spec pins that `/` opens none.
