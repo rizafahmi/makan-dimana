@@ -65,3 +65,35 @@ Which failure to stage depends on the branch.
 One thing not to promise on stage: the QR is rendered by the server, so offline the
 share block shows the URL as text. That is by design - an offline QR cannot resolve a
 scan - but it is a surprise if you meant to scan one on camera.
+
+### Serving it to a second device
+
+A phone reaching the laptop over LAN HTTP - `HOST=0.0.0.0 node dist/server/entry.mjs`
+at `http://192.168.x.x` - is **not a secure context**, and three things the browser
+otherwise provides are simply absent there: `navigator.serviceWorker`,
+`crypto.randomUUID` and `crypto.subtle`. The client already avoids the latter two, and
+`test/device.spec.ts` deletes both before page scripts run so nothing can reach for
+them again. The service worker is the one that cannot be worked around: registration
+silently no-ops, so the phone syncs and votes fine but a reload while offline dies on
+the browser's own error page - the exact failure `4-local-first` exists to remove.
+
+So put the demo behind a real HTTPS origin. A tunnel - `cloudflared tunnel --url
+http://localhost:4321`, or ngrok - is enough, and once the worker has installed and the
+data is local you can kill the tunnel: the worker serves the shell from cache without
+ever touching the network, which is what `test/offline.spec.ts` pins. Killing the
+tunnel *is* the offline demo.
+
+Two traps, both of which end the demo rather than degrading it:
+
+- **A quick tunnel mints a new hostname every run.** Service worker registrations and
+  IndexedDB are per-origin, so restarting the tunnel between setup and the talk hands
+  you a fresh device with no worker and no sessions. Set the URL up once and leave it
+  running, or use a named tunnel with a stable hostname.
+- **Set up while you still have internet.** The tunnel needs a connection to establish,
+  and the shell only reaches the cache on the second navigation, since the first visit
+  installs the worker without being controlled by it. Load each device twice on the
+  venue wifi before you need it.
+
+Both devices can sit on the tunnel URL. They converge either way - the relay is one
+server and one SQLite file whichever origin reaches it - but sharing an origin keeps
+the QR, the share link and the worker scope all agreeing with each other.
