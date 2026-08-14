@@ -1,5 +1,6 @@
 import { listPlaces, tallyView, winnerView } from "../lib/session.ts";
 import { relativeTime } from "../lib/time.ts";
+import { validateCreate } from "../lib/validate.ts";
 
 type Row = { id: string; title: string; is_open: number; created_at: string };
 type State = (state: string, text: string) => void;
@@ -392,8 +393,57 @@ const mountLanding = (root: HTMLElement) => {
   void run();
 };
 
+const fieldNames = ["title", "place1", "place2", "place3", "place4"];
+
+const showErrors = (form: HTMLFormElement, errors: Record<string, string>) => {
+  for (const stale of form.querySelectorAll(".km-error, .km-form-error")) {
+    stale.remove();
+  }
+
+  for (const name of fieldNames) {
+    const input = form.querySelector<HTMLInputElement>(`input[name="${name}"]`);
+    const field = input?.closest<HTMLElement>(".km-field");
+    if (!input || !field) continue;
+
+    delete field.dataset.invalid;
+    input.removeAttribute("aria-describedby");
+
+    const text = errors[name];
+    if (text === undefined) continue;
+
+    field.dataset.invalid = "true";
+    input.setAttribute("aria-describedby", `${name}-error`);
+    const note = el("span", text);
+    note.className = "km-error";
+    note.id = `${name}-error`;
+    field.append(note);
+  }
+
+  if (errors.places !== undefined) {
+    const note = el("p", errors.places);
+    note.className = "km-form-error";
+    form.querySelector("button")?.before(note);
+  }
+};
+
+const mountCreate = (form: HTMLFormElement) => {
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const data = new FormData(form);
+    const read = (name: string) => String(data.get(name) ?? "");
+    const result = validateCreate({
+      title: read("title"),
+      places: fieldNames.slice(1).map(read),
+    });
+    if (result.ok) return;
+    showErrors(form, result.errors);
+  });
+};
+
+const create = document.querySelector<HTMLFormElement>("[data-create]");
 const session = document.querySelector<HTMLElement>("[data-session]");
 const sessions = document.querySelector<HTMLElement>("[data-sessions]");
 
+if (create) mountCreate(create);
 if (session) mountSession(session);
 if (sessions) mountLanding(sessions);
