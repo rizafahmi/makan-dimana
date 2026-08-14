@@ -39,9 +39,19 @@ Merging is a pure function on the client.
 - Sync fires on load, `online` and `visibilitychange`. No polling, no sync control
 - The UI says nothing about the network. No staleness line, no offline banner, no age
   stamps. An unreachable session reuses `data-state="missing"`
-- Sync bodies stay form-encoded with one field, `doc`, carrying the document as a
-  string. This keeps `readForm`, the unparseable-body 400 guard and Astro's
-  `checkOrigin`, which only applies to form content types
+- Sync bodies stay form-encoded, with `device` carrying this device's id and `doc`
+  carrying its document as a string. This keeps `readForm`, the unparseable-body 400
+  guard and Astro's `checkOrigin`, which only applies to form content types. The id
+  travels beside the document rather than inside it because the row is keyed
+  `(session_id, device_id)` and the server cannot read a device id out of a payload
+  it never parses
+- A read returns an array of document *strings*, so the client runs `JSON.parse` per
+  element. Concatenating the stored strings into one JSON array server-side would
+  hand the client real objects while still parsing nothing, and it is the obvious
+  thing to "simplify" this into - but then one malformed document poisons the whole
+  response for every device in that session, and a single hand-crafted POST takes a
+  session down for everyone. Per-element parsing keeps a bad document to the one
+  device that wrote it
 - The merge returns the same row shape the endpoints returned in v2, so `listPlaces`,
   `tallyView`, `winnerView` and `relativeTime` are untouched and the whole render path
   in `app.ts` survives
@@ -74,7 +84,11 @@ session_docs:
 - updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 - PRIMARY KEY (session_id, device_id)
 
-`doc` is never parsed by the server. Every row has exactly one writer.
+`doc` is never parsed by the server. Every row has exactly one writer, so `putDoc`
+is a blind `INSERT OR REPLACE` and needs no merge, no compare-and-set and no
+conflict handling. `listDocs` returns that session's document strings, in no
+promised order - the merge is order-independent. `updated_at` is written and never
+read; it is there for a human looking at the file.
 
 ## Document shape
 
@@ -143,17 +157,23 @@ Replaces the table in `docs/plan-v2.md`.
 | `GET /s/[id]`, any valid id | 200 shell, no session data |
 | `GET /api/sessions` | 404. The route is deleted |
 | `GET /api/sessions/[id]`, malformed id | 404 |
-| `GET /api/sessions/[id]`, unknown id | 200, empty array |
-| `GET /api/sessions/[id]` | 200, every document for that session as a JSON array |
-| `POST /api/sessions/[id]`, form field `doc` | 204, document stored verbatim |
-| `POST /api/sessions/[id]`, non-form or missing `doc` | 400 |
+| `GET /api/sessions/[id]`, id the server holds nothing for | 200, empty array |
+| `GET /api/sessions/[id]` | 200, that session's documents as a JSON array of strings |
+| `POST /api/sessions/[id]`, fields `device` and `doc` | 204, stored verbatim |
+| `POST /api/sessions/[id]`, malformed id | 404 |
+| `POST /api/sessions/[id]`, non-form body or a non-string field | 400 |
 
 A valid but unknown id is 200 with an empty array, not 404: the server cannot know
 whether a session exists, only whether it holds documents for it.
 
+Both handlers normalize the id before touching the store, so a lookalike-typo link
+reads and writes the same row as the canonical one.
+
 ## Conventions
 
 - The device id is `crypto.randomUUID()`, generated once and persisted in IndexedDB
+- A sync POST carries both `device` and `doc`. Neither is validated beyond being a
+  string: a device names itself, and the server takes its word for it
 - The client talks to a narrow store port so the IndexedDB adapter stays the only
   untestable part
 - `data-state` goes straight to `ready`. `loading`, `error` and the retry button are
@@ -171,14 +191,19 @@ whether a session exists, only whether it holds documents for it.
 Ordered so every commit is green. The pure functions land first, then the server, then
 the client, then the service worker.
 
-- [ ] `mergeDocs` turns a lone creator document into a session row
-- [ ] `mergeDocs` sums PN counters across documents, unclamped and possibly negative
-- [ ] `mergeDocs` closes when any document is closed, picks the lower device id when
+Green does not mean whole: from the relay step until `/new` creates locally there is
+no way to create a session at all, and the v2 client keeps asking for endpoints that
+have changed shape or gone. That is what "one branch, one whole-branch diff" buys -
+a temporary server-side create would be code written only to be deleted.
+
+- [x] `mergeDocs` turns a lone creator document into a session row
+- [x] `mergeDocs` sums PN counters across documents, unclamped and possibly negative
+- [x] `mergeDocs` closes when any document is closed, picks the lower device id when
       two documents both claim a title, and returns null when none does
-- [ ] `emptyDoc`, `creatorDoc`, `applyVote` and `applyClose` as pure document
+- [x] `emptyDoc`, `creatorDoc`, `applyVote` and `applyClose` as pure document
       transforms
-- [ ] Id generation moves to `id.ts` on `crypto.getRandomValues`
-- [ ] `session_docs` replaces `vote_sessions`; `GET` and `POST /api/sessions/[id]`
+- [x] Id generation moves to `id.ts` on `crypto.getRandomValues`
+- [x] `session_docs` replaces `vote_sessions`; `GET` and `POST /api/sessions/[id]`
       become the relay, and the e2e suites are rewritten onto it in the same commit
 - [ ] Playwright and `@playwright/test` are installed and `pnpm test` chains both
       runners
