@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { createSession } from "./browser.ts";
+import { createSession, cuttableStream } from "./browser.ts";
 
 const settle = 1500;
 
@@ -428,4 +428,38 @@ test("a device told about its own write stops after answering it once", async ({
   await page.waitForTimeout(settle);
 
   expect(pushes.length).toBeLessThanOrEqual(2);
+});
+
+test("a device whose stream dropped picks up what it slept through", async ({
+  browser,
+}) => {
+  const first = await browser.newContext();
+  const second = await browser.newContext();
+  const a = await first.newPage();
+  const b = await second.newPage();
+
+  const link = await afterSync(a, () => createSession(a, "Makan nyenyak"));
+  const stream = await cuttableStream(b, new URL(a.url()).origin);
+
+  const live = b.waitForResponse((response) =>
+    new URL(response.url()).pathname.endsWith("/events"),
+  );
+  await afterSync(b, () => b.goto(link));
+  await live;
+
+  await warteg(a).click();
+  await expect(warteg(b)).toHaveAttribute("data-votes", "1");
+
+  stream.cut();
+
+  await warteg(a).click();
+  await expect(warteg(a)).toHaveAttribute("data-votes", "2");
+
+  await expect(warteg(b)).toHaveAttribute("data-votes", "2", {
+    timeout: 15_000,
+  });
+
+  await stream.stop();
+  await first.close();
+  await second.close();
 });

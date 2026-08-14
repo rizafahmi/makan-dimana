@@ -106,10 +106,10 @@ A tally is the sum of every `up` minus every `down`, unclamped and possibly nega
 * `src/lib/db.ts` - the relay's one table and its two statements. Authoritative for the schema; keep it and the data model above in sync.
 * `src/lib/relay.ts` - the in-memory registry of who is listening to which session. It carries no payload and never sees a document; a publish says only that a session was written.
 * `src/lib/` - domain logic, so merge, closed-session and missing-slot behavior is unit-testable before the routes and the client that expose it exist. Pages stay thin wrappers that map results to status codes.
-* `src/pages/` - routes. `/` is this device's session list, `/new` creates one in the browser, `/s/[id]` votes and shows the winner, `/api/sessions/[id]` is the relay, and `/api/sessions/[id]/events` is the stream that says when it changed.
+* `src/pages/` - routes. `/` is this device's session list, `/new` creates one in the browser, `/s/[id]` votes and shows the winner, `/api/sessions/[id]` is the relay, and `/api/sessions/[id]/events` is the stream that says when it changed - which is when a write stored bytes the row did not already hold.
 * `src/layouts/Base.astro` and `src/styles/global.css` - the shared shell and the single stylesheet. Every page uses them from its first commit.
 * `src/scripts/app.ts` - the only client entry, loaded from `Base.astro`. It renders `/` and `/s/[id]` from IndexedDB, answers the create form, and owns the empty and missing states. There is no loading state and no error state to own.
-* `src/scripts/idb.ts` and `src/scripts/sync.ts` - client-only plumbing: IndexedDB I/O, the relay round trip, the push that follows every local write, and the triggers - load, `online` and the session's event stream. Neither decides anything; a decision belongs in `src/lib/store.ts`.
+* `src/scripts/idb.ts` and `src/scripts/sync.ts` - client-only plumbing: IndexedDB I/O, the relay round trip, the push that follows every local write, and the triggers - load, `online`, the session's event stream, and every reconnection of it. Neither decides anything; a decision belongs in `src/lib/store.ts`.
 * `public/sw.js` - the service worker. Hand-written, precaches the shell, never touches `/api/**`. Bump its `version` constant after changing anything the shell ships.
 * `data/makan.db` - the local SQLite file. Gitignored, created on first import.
 * `README.md` - project overview and commands for humans. `AGENTS.md` wins on any conflict.

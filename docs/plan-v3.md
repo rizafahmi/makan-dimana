@@ -50,11 +50,13 @@ Merging is a pure function on the client.
   shipped without one, not a rule this branch has to keep
 - The QR stays server-only and online-only. Offline the share block shows URL text.
   An offline QR cannot resolve a scan, so it is not worth a client-side bundle
-- Sync fires on load, on `online`, and on a server-sent event saying that session
-  changed. No polling, no sync control - see
-  `docs/adr/0008-changes-arrive-over-an-event-stream.md`. `visibilitychange` is gone:
-  it only ever fired when a device came back to a tab, so a phone and a laptop both
-  sitting there visible never learned about each other
+- Sync fires on load, on `online`, on a server-sent event saying that session changed,
+  and on every reconnection of the stream that carries those events. No polling, no
+  sync control - see `docs/adr/0008-changes-arrive-over-an-event-stream.md`.
+  `visibilitychange` is gone: it only ever fired when a device came back to a tab, so a
+  phone and a laptop both sitting there visible never learned about each other. What it
+  did cover - a phone that slept through a change - is covered by the reconnection
+  instead, because a phone that sleeps drops its stream
 - The UI says nothing about the network. No staleness line, no offline banner, no age
   stamps. An unreachable session reuses `data-state="missing"`
 - Sync bodies stay form-encoded, with `device` carrying this device's id and `doc`
@@ -374,6 +376,20 @@ see `docs/adr/0008-changes-arrive-over-an-event-stream.md`.
   that will not connect leaves an app that behaves exactly as it does offline, which
   is to say correctly. The landing page subscribes to nothing - see
   `docs/adr/0008-changes-arrive-over-an-event-stream.md`
+- `EventSource` owning the reconnection is also what reports it: it fires `open` for
+  every connection it makes, so the second and every later one means the stream was
+  down and a change could have passed unseen, and `keepListening` syncs there. The
+  first `open` is skipped - it lands beside the load sync, and syncing there is a
+  whole extra push and pull on every page load, which the push-before-pull spec sees
+  and fails on. It is the reason the greeting is a named `ready` event: `open` is the
+  reconnect signal, so the greeting must not double as one
+- A spec that wants the stream to drop under a page runs the events request through a
+  local proxy it can destroy the socket of - `cuttableStream` in `test/browser.ts`,
+  which rewrites the request's URL with `route.continue`. Routing alone cannot do it:
+  a route is matched when a request starts, and the request being severed here has
+  been open for seconds. Cutting the connection rather than the network is the point,
+  since `setOffline` would fire `online` on the way back and that is the trigger the
+  spec has to rule out
 - A spec that wants a sync without a stream event dispatches `online` on `window`,
   where it is listened for. It stands in for the trigger that is hard to stage rather
   than for a real network transition, the way the `visibilitychange` dispatch it
@@ -441,11 +457,22 @@ a temporary server-side create would be code written only to be deleted.
       stayed visible. `visibilitychange` goes with it, so the trigger list is load,
       `online` and the stream. Written after the branch was already presented, which is
       why it is a step of its own rather than a correction to the sync step above
+- [x] A reconnection of the stream is a sync, which closes the gap the step above left
+      open: a phone that sleeps through a change wakes with its stream dropped, and the
+      connection it has to remake is the signal that something may have passed it.
+      Two findings came with it. The relay published every write, so a device's own
+      change frame triggered a sync whose push republished - one tap became an endless
+      exchange, over five hundred pushes in a second and a half, on every device on the
+      session; the relay now publishes only a write that stored different bytes. And
+      syncing on the first `open` rather than only on later ones costs an extra push
+      and pull on every page load, which the push-before-pull spec catches
 
 ## Manual checks
 
 - Open one session on two devices, vote on one, and confirm the other moves without
   being touched - no reload, no tab switch, no tap
+- Open the session on a phone, let the screen sleep, vote on the laptop, and confirm
+  the phone is already showing it when the screen comes back - no reload, no tap
 - Load `/`, tick Offline in DevTools, reload, and confirm the list and a session both
   render
 - Vote offline on two devices, reconnect both, and confirm the tallies combine

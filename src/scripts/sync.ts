@@ -15,6 +15,11 @@ export const keepSynced = (run: () => void) => {
 
 export const keepListening = (id: string, run: () => void) => {
   const stream = new EventSource(`${endpoint(id)}/events`);
+  let connected = false;
+  stream.addEventListener("open", () => {
+    if (connected) run();
+    connected = true;
+  });
   stream.addEventListener("message", run);
 };
 
