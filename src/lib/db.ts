@@ -1,8 +1,7 @@
 import { mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { randomBytes } from "node:crypto";
-import { alphabet, normalizeSessionId } from "./id.ts";
+import { generateSessionId, normalizeSessionId } from "./id.ts";
 
 const file = resolve(process.env.MAKAN_DB ?? "data/makan.db");
 
@@ -43,17 +42,11 @@ const store = globalThis as typeof globalThis & { makanDb?: DatabaseSync };
 
 export const db = (store.makanDb ??= open());
 
-const defaultGenerateId = () => {
-  let id = "";
-  for (const byte of randomBytes(7)) id += alphabet[byte % 32];
-  return id;
-};
-
 type SessionInput = { title: string; places: string[] };
 
 export const createSession = (
   input: SessionInput,
-  generateId = defaultGenerateId,
+  generateId = generateSessionId,
 ) => {
   const insert = db.prepare(
     "INSERT INTO vote_sessions (id, title, place1_name, place2_name, place3_name, place4_name) VALUES (?, ?, ?, ?, ?, ?)",
