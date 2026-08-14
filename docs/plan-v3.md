@@ -86,8 +86,13 @@ carries `title`, `places` and `created_at`; on every other document they are nul
 - places: string[] | null, 2-4 trimmed non-empty names
 - created_at: string | null, `datetime('now')` format, UTC
 - closed: boolean
-- up: Record<'1'|'2'|'3'|'4', number>
-- down: Record<'1'|'2'|'3'|'4', number>
+- up: Partial<Record<'1'|'2'|'3'|'4', number>>
+- down: Partial<Record<'1'|'2'|'3'|'4', number>>
+
+Both counters are sparse. A slot a device never touched carries no key at all, and a
+missing key reads as zero, so a device that voted for one place holds one entry rather
+than three zeros. `Partial` is what makes the empty `{}` on a fresh document assignable
+under `astro/tsconfigs/strict`.
 
 ## Merge
 
