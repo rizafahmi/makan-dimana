@@ -1,13 +1,6 @@
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
-import {
-  postForm,
-  readSession,
-  readSessions,
-  seedSession,
-  sessionId,
-  startServer,
-} from "./harness.ts";
+import { postForm, putDoc, startServer } from "./harness.ts";
 
 let server: Awaited<ReturnType<typeof startServer>>;
 
@@ -19,202 +12,90 @@ after(async () => {
   await server.stop();
 });
 
-test("GET /api/sessions returns an empty array for a fresh database", async () => {
-  const res = await fetch(`${server.origin}/api/sessions`);
+test("POST /api/sessions/[id] takes a device's document and answers 204", async () => {
+  const res = await putDoc(
+    server.origin,
+    "abc12qx",
+    "a3f1",
+    '{"device":"a3f1","title":"Sesi API"}',
+  );
+
+  assert.equal(res.status, 204);
+  assert.equal(await res.text(), "");
+});
+
+test("GET /api/sessions/[id] hands back a document the server cannot parse", async () => {
+  const doc = 'not json at all {{{ "kutipan" \\ ünïcode\nbaris kedua';
+  await putDoc(server.origin, "0paqe70", "a3f1", doc);
+
+  const res = await fetch(`${server.origin}/api/sessions/0paqe70`);
   assert.equal(res.status, 200);
   assert.match(String(res.headers.get("content-type")), /application\/json/);
-  assert.deepEqual(await readSessions(server.origin), []);
+  assert.deepEqual(await res.json(), [doc]);
 });
 
-test("GET /api/sessions/[id] returns the session row as JSON", async () => {
-  const path = await seedSession(server.origin, { title: "Sesi API" });
-  const id = sessionId(path);
+test("GET /api/sessions/[id] resolves the id it was given, or 404s it", async () => {
+  const doc = '{"device":"a3f1","title":"Sesi mirip"}';
+  await putDoc(server.origin, "abc120x", "a3f1", doc);
 
-  const res = await fetch(`${server.origin}/api/sessions/${id}`);
-  assert.equal(res.status, 200);
-  assert.match(String(res.headers.get("content-type")), /application\/json/);
+  const typo = await fetch(`${server.origin}/api/sessions/ABCl2Ox`);
+  assert.equal(typo.status, 200);
+  assert.deepEqual(await typo.json(), [doc]);
 
-  const body = await res.json();
-  assert.equal(body.id, id);
-  assert.equal(body.title, "Sesi API");
-  assert.equal(body.is_open, 1);
-  assert.equal(body.place1_name, "Warteg");
-  assert.equal(body.place2_name, "Padang");
-  assert.equal(body.place1_votes, 0);
-  assert.equal(body.place3_name, null);
-});
+  const unknown = await fetch(`${server.origin}/api/sessions/zzzzzzz`);
+  assert.equal(unknown.status, 200);
+  assert.deepEqual(await unknown.json(), []);
 
-test("GET /api/sessions/[id] resolves a lookalike-typo id", async () => {
-  const path = await seedSession(server.origin, { title: "Sesi mirip" });
-  const id = sessionId(path);
-  const typo = id.replaceAll("1", "l").replaceAll("0", "O").toUpperCase();
-
-  const res = await fetch(`${server.origin}/api/sessions/${typo}`);
-  assert.equal(res.status, 200);
-  assert.equal((await res.json()).id, id);
-});
-
-test("GET /api/sessions/[id] returns 404 for unknown and malformed ids", async () => {
-  for (const id of ["zzzzzzz", "zzzzzz", "short", "abc12u3", "abc12!3"]) {
+  for (const id of ["zzzzzz", "short", "abc12u3", "abc12!3"]) {
     const res = await fetch(`${server.origin}/api/sessions/${id}`);
     assert.equal(res.status, 404, `expected 404 for ${id}`);
   }
 });
 
-test("GET /api/sessions returns seeded sessions newest first", async () => {
-  await seedSession(server.origin, { title: "Sesi lama" });
-  await seedSession(server.origin, { title: "Sesi baru" });
+test("POST /api/sessions/[id] stores a document under the canonical id", async () => {
+  const doc = '{"device":"a3f1","title":"Sesi non-kanonik"}';
+  const res = await putDoc(server.origin, "ABCl23x", "a3f1", doc);
+  assert.equal(res.status, 204);
 
-  const body = await readSessions(server.origin);
-  const titles = body.map((session: { title: string }) => session.title);
-
-  assert.ok(titles.indexOf("Sesi baru") < titles.indexOf("Sesi lama"));
-  assert.equal(body[0].place1_name, "Warteg");
-  assert.ok(typeof body[0].created_at === "string");
+  const canonical = await fetch(`${server.origin}/api/sessions/abc123x`);
+  assert.deepEqual(await canonical.json(), [doc]);
 });
 
-const seedId = async (title: string) =>
-  sessionId(await seedSession(server.origin, { title }));
+test("POST /api/sessions/[id] refuses a malformed id and a body it cannot read", async () => {
+  const doc = '{"device":"a3f1"}';
+  for (const id of ["zzzzzz", "short", "abc12u3", "abc12!3"]) {
+    const res = await putDoc(server.origin, id, "a3f1", doc);
+    assert.equal(res.status, 404, `expected 404 for ${id}`);
+  }
 
-const mutate = (id: string, fields: Record<string, string>) =>
-  postForm(server.origin, `/api/sessions/${id}`, fields);
-
-const read = (id: string) => readSession(server.origin, id);
-
-test("POST /api/sessions/[id] upvote returns the incremented session", async () => {
-  const id = await seedId("Sesi vote");
-  const res = await mutate(id, { action: "upvote", place: "1" });
-
-  assert.equal(res.status, 200);
-  const body = await res.json();
-  assert.equal(body.place1_votes, 1);
-  assert.equal(body.place2_votes, 0);
-});
-
-test("POST /api/sessions/[id] downvote clamps at zero", async () => {
-  const id = await seedId("Sesi turun");
-  const res = await mutate(id, { action: "downvote", place: "1" });
-
-  assert.equal(res.status, 200);
-  assert.equal((await res.json()).place1_votes, 0);
-});
-
-test("POST /api/sessions/[id] rejects a vote for an empty slot", async () => {
-  const id = await seedId("Sesi dua tempat");
-  assert.equal((await mutate(id, { action: "upvote", place: "3" })).status, 400);
-});
-
-test("POST /api/sessions/[id] rejects malformed requests", async () => {
-  const id = await seedId("Sesi salah");
-
-  const malformed: Record<string, string>[] = [
-    {},
-    { action: "bogus" },
-    { action: "upvote" },
-    { action: "upvote", place: "02" },
-    { action: "upvote", place: "5" },
-    { action: "upvote", place: " 2" },
-  ];
-
-  for (const fields of malformed) {
-    const res = await mutate(id, fields);
+  const partial: Record<string, string>[] = [{}, { device: "a3f1" }, { doc }];
+  for (const fields of partial) {
+    const res = await postForm(server.origin, "/api/sessions/re1ect0", fields);
     assert.equal(res.status, 400, `expected 400 for ${JSON.stringify(fields)}`);
   }
 
-  const state = await read(id);
-  assert.equal(state.place1_votes, 0);
-  assert.equal(state.place2_votes, 0);
-});
+  const upload = new FormData();
+  upload.set("device", "a3f1");
+  upload.set("doc", new Blob([doc]), "doc.json");
 
-test("POST /api/sessions/[id] close and reopen are idempotent", async () => {
-  const id = await seedId("Sesi tutup");
-
-  const closed = await mutate(id, { action: "close" });
-  assert.equal(closed.status, 200);
-  assert.equal((await closed.json()).is_open, 0);
-
-  const again = await mutate(id, { action: "close" });
-  assert.equal(again.status, 200);
-  assert.equal((await again.json()).is_open, 0);
-
-  const reopened = await mutate(id, { action: "reopen" });
-  assert.equal(reopened.status, 200);
-  assert.equal((await reopened.json()).is_open, 1);
-
-  const reopenedAgain = await mutate(id, { action: "reopen" });
-  assert.equal(reopenedAgain.status, 200);
-  assert.equal((await reopenedAgain.json()).is_open, 1);
-});
-
-test("POST /api/sessions/[id] returns 409 for a vote on a closed session", async () => {
-  const id = await seedId("Sesi sudah ditutup");
-  await mutate(id, { action: "upvote", place: "1" });
-  await mutate(id, { action: "close" });
-
-  assert.equal((await mutate(id, { action: "upvote", place: "1" })).status, 409);
-  assert.equal((await read(id)).place1_votes, 1);
-});
-
-test("POST /api/sessions/[id] returns 400 for a non-form body", async () => {
-  const id = await seedId("Sesi body");
-  const res = await fetch(`${server.origin}/api/sessions/${id}`, {
-    method: "POST",
-    headers: { origin: server.origin, "content-type": "application/json" },
-    body: "{not json at all",
-    redirect: "manual",
-  });
-
-  assert.equal(res.status, 400);
-
-  const state = await read(id);
-  assert.equal(state.place1_votes, 0);
-  assert.equal(state.place2_votes, 0);
-});
-
-test("POST /api/sessions/[id] returns 404 for unknown and malformed ids", async () => {
-  for (const id of ["zzzzzzz", "short", "abc12!3"]) {
-    const res = await mutate(id, { action: "upvote", place: "1" });
-    assert.equal(res.status, 404, `expected 404 for ${id}`);
+  for (const body of [upload, "{not json at all"]) {
+    const res = await fetch(`${server.origin}/api/sessions/re1ect0`, {
+      method: "POST",
+      headers:
+        typeof body === "string"
+          ? { origin: server.origin, "content-type": "application/json" }
+          : { origin: server.origin },
+      body,
+      redirect: "manual",
+    });
+    assert.equal(res.status, 400, `expected 400 for ${typeof body}`);
   }
+
+  const stored = await fetch(`${server.origin}/api/sessions/re1ect0`);
+  assert.deepEqual(await stored.json(), []);
 });
 
-test("GET /api/sessions reports open and closed state", async () => {
-  const id = await seedId("Sesi status");
-  await mutate(id, { action: "close" });
-
-  const body = await readSessions(server.origin);
-  const row = body.find((session: { id: string }) => session.id === id);
-
-  assert.equal(row.is_open, 0);
-});
-
-test("POST /api/sessions/[id] accepts a non-canonical id", async () => {
-  const id = await seedId("Sesi non-kanonik");
-  const shouty = id.replaceAll("1", "l").replaceAll("0", "o").toUpperCase();
-
-  const res = await mutate(shouty, { action: "upvote", place: "1" });
-  assert.equal(res.status, 200);
-  assert.equal((await res.json()).id, id);
-  assert.equal((await read(id)).place1_votes, 1);
-});
-
-test("POST /api/sessions/[id] reports why a mutation failed", async () => {
-  const id = await seedId("Sesi alasan");
-
-  const bogus = await mutate(id, { action: "bogus" });
-  assert.equal(bogus.status, 400);
-  assert.deepEqual(await bogus.json(), { error: "bad_request" });
-
-  const slot = await mutate(id, { action: "upvote", place: "3" });
-  assert.equal(slot.status, 400);
-  assert.deepEqual(await slot.json(), { error: "no_such_place" });
-
-  await mutate(id, { action: "close" });
-  const closed = await mutate(id, { action: "upvote", place: "1" });
-  assert.equal(closed.status, 409);
-  assert.deepEqual(await closed.json(), { error: "closed" });
-
-  const missing = await mutate("zzzzzzz", { action: "upvote", place: "1" });
-  assert.equal(missing.status, 404);
-  assert.deepEqual(await missing.json(), { error: "not_found" });
+test("GET /api/sessions is gone, because the landing list is local", async () => {
+  const res = await fetch(`${server.origin}/api/sessions`);
+  assert.equal(res.status, 404);
 });

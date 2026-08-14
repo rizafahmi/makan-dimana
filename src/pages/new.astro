@@ -1,32 +1,8 @@
 ---
 import Base from "../layouts/Base.astro";
-import { createSession } from "../lib/db.ts";
-import { validateCreate } from "../lib/validate.ts";
-import { readForm } from "../lib/form.ts";
-
-let errors: Record<string, string> = {};
-let values = { title: "", place1: "", place2: "", place3: "", place4: "" };
 
 if (Astro.request.method === "POST") {
-  const form = await readForm(Astro.request);
-  if (form === null) return new Response(null, { status: 400 });
-  values = {
-    title: String(form.get("title") ?? ""),
-    place1: String(form.get("place1") ?? ""),
-    place2: String(form.get("place2") ?? ""),
-    place3: String(form.get("place3") ?? ""),
-    place4: String(form.get("place4") ?? ""),
-  };
-  const result = validateCreate({
-    title: values.title,
-    places: [values.place1, values.place2, values.place3, values.place4],
-  });
-  if (result.ok) {
-    const id = createSession({ title: result.title, places: result.places });
-    return Astro.redirect(`/s/${id}`, 303);
-  }
-  errors = result.errors;
-  Astro.response.status = 422;
+  return new Response(null, { status: 405, headers: { allow: "GET" } });
 }
 ---
 
@@ -34,92 +10,26 @@ if (Astro.request.method === "POST") {
   <a class="km-back km-nav" href="/">Semua sesi</a>
   <h1 class="km-h1">Bikin sesi baru</h1>
   <form class="km-form" method="post">
-    <div class="km-field" data-invalid={errors.title ? "true" : undefined}>
+    <div class="km-field">
       <label for="title">Judul</label>
-      <input
-        class="km-input"
-        name="title"
-        id="title"
-        value={values.title}
-        aria-describedby={errors.title ? "title-error" : undefined}
-      />
-      {
-        errors.title && (
-          <span class="km-error" id="title-error">
-            {errors.title}
-          </span>
-        )
-      }
+      <input class="km-input" name="title" id="title" />
     </div>
-    <div class="km-field" data-invalid={errors.place1 ? "true" : undefined}>
+    <div class="km-field">
       <label for="place1">Tempat 1</label>
-      <input
-        class="km-input"
-        name="place1"
-        id="place1"
-        value={values.place1}
-        aria-describedby={errors.place1 ? "place1-error" : undefined}
-      />
-      {
-        errors.place1 && (
-          <span class="km-error" id="place1-error">
-            {errors.place1}
-          </span>
-        )
-      }
+      <input class="km-input" name="place1" id="place1" />
     </div>
-    <div class="km-field" data-invalid={errors.place2 ? "true" : undefined}>
+    <div class="km-field">
       <label for="place2">Tempat 2</label>
-      <input
-        class="km-input"
-        name="place2"
-        id="place2"
-        value={values.place2}
-        aria-describedby={errors.place2 ? "place2-error" : undefined}
-      />
-      {
-        errors.place2 && (
-          <span class="km-error" id="place2-error">
-            {errors.place2}
-          </span>
-        )
-      }
+      <input class="km-input" name="place2" id="place2" />
     </div>
-    <div class="km-field" data-invalid={errors.place3 ? "true" : undefined}>
+    <div class="km-field">
       <label for="place3">Tempat 3</label>
-      <input
-        class="km-input"
-        name="place3"
-        id="place3"
-        value={values.place3}
-        aria-describedby={errors.place3 ? "place3-error" : undefined}
-      />
-      {
-        errors.place3 && (
-          <span class="km-error" id="place3-error">
-            {errors.place3}
-          </span>
-        )
-      }
+      <input class="km-input" name="place3" id="place3" />
     </div>
-    <div class="km-field" data-invalid={errors.place4 ? "true" : undefined}>
+    <div class="km-field">
       <label for="place4">Tempat 4</label>
-      <input
-        class="km-input"
-        name="place4"
-        id="place4"
-        value={values.place4}
-        aria-describedby={errors.place4 ? "place4-error" : undefined}
-      />
-      {
-        errors.place4 && (
-          <span class="km-error" id="place4-error">
-            {errors.place4}
-          </span>
-        )
-      }
+      <input class="km-input" name="place4" id="place4" />
     </div>
-    {errors.places && <p class="km-form-error">{errors.places}</p>}
     <button class="km-button" data-block="true">Bikin sesi</button>
   </form>
 </Base>

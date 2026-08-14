@@ -4,6 +4,8 @@ import { once } from "node:events";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { generateSessionId } from "../src/lib/id.ts";
+import { creatorDoc } from "../src/lib/merge.ts";
 
 const entry = "dist/server/entry.mjs";
 const startTimeout = 20_000;
@@ -78,25 +80,26 @@ export const postForm = (
     redirect: "manual",
   });
 
-export const seedSession = async (
+export const putDoc = (
   origin: string,
-  fields: Record<string, string> = {},
-) => {
-  const res = await postForm(origin, "/new", {
-    title: "Sesi uji",
-    place1: "Warteg",
-    place2: "Padang",
-    place3: "",
-    place4: "",
-    ...fields,
-  });
-  return String(res.headers.get("location"));
+  id: string,
+  device: string,
+  doc: string,
+) => postForm(origin, `/api/sessions/${id}`, { device, doc });
+
+type Seed = { title?: string; places?: string[]; device?: string };
+
+export const seedSession = async (origin: string, seed: Seed = {}) => {
+  const id = generateSessionId();
+  const device = seed.device ?? "a3f1";
+  const doc = creatorDoc(
+    device,
+    seed.title ?? "Sesi uji",
+    seed.places ?? ["Warteg", "Padang"],
+    "2026-08-14 03:00:00",
+  );
+
+  const res = await putDoc(origin, id, device, JSON.stringify(doc));
+  assert.equal(res.status, 204);
+  return `/s/${id}`;
 };
-
-export const sessionId = (path: string) => String(path.split("/").pop());
-
-export const readSession = async (origin: string, path: string) =>
-  (await fetch(`${origin}/api/sessions/${sessionId(path)}`)).json();
-
-export const readSessions = async (origin: string) =>
-  (await fetch(`${origin}/api/sessions`)).json();
