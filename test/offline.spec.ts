@@ -86,3 +86,46 @@ test("a sync request is never cached, and never answered from a cache", async ({
   });
   expect(held.filter((path) => path.startsWith("/api/"))).toEqual([]);
 });
+
+const forgetShell = (page: Page, path: string) =>
+  page.evaluate(async (gone) => {
+    for (const name of await caches.keys()) {
+      await (await caches.open(name)).delete(gone);
+    }
+  }, path);
+
+test("a session whose own shell was never cached still renders offline", async ({
+  context,
+  page,
+}) => {
+  const link = await createSession(page, "Makan pagi tim");
+  await controlled(page);
+  await page.goto(link);
+  await forgetShell(page, link);
+
+  await context.setOffline(true);
+  await page.goto(link);
+
+  await expect(
+    page.getByRole("heading", { name: "Makan pagi tim" }),
+  ).toBeVisible();
+  await expect(page.getByText("Warteg Bahari")).toBeVisible();
+});
+
+test("a shell borrowed from another session shows its QR to nobody", async ({
+  context,
+  page,
+}) => {
+  const link = await createSession(page, "Makan larut tim");
+  await controlled(page);
+  await page.goto(link);
+  await forgetShell(page, link);
+
+  await context.setOffline(true);
+  await page.goto(link);
+
+  const share = page.locator("[data-share]");
+  await expect(share).toBeVisible();
+  await expect(share.locator(".km-share-plate")).toHaveCount(0);
+  await expect(share.locator(".km-share-url")).toHaveText(page.url());
+});

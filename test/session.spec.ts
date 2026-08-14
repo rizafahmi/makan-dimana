@@ -188,10 +188,7 @@ test("a malformed id is refused by the client, not only by the page", async ({
     await route.fulfill({
       status: 200,
       contentType: "text/html",
-      body: (await shell.text()).replace(
-        'data-id="zzzzzzz"',
-        'data-id="not-an-id"',
-      ),
+      body: await shell.text(),
     });
   });
 

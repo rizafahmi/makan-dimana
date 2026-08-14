@@ -57,10 +57,16 @@ const mountSession = async (root: HTMLElement) => {
     if (share) share.hidden = true;
   };
 
-  const canonical = normalizeSessionId(root.dataset.id ?? "");
+  const canonical = normalizeSessionId(location.pathname.slice(3));
   if (canonical === null) return missing();
 
   const id = canonical;
+  if (share && root.dataset.id !== id) {
+    share.querySelector(".km-share-plate")?.remove();
+    const url = share.querySelector(".km-share-url");
+    if (url) url.textContent = `${location.origin}/s/${id}`;
+  }
+
   const device = await deviceId();
   const first = await readSession(id);
   let stored = first ?? { id, docs: [] };

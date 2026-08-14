@@ -1,8 +1,11 @@
 const version = "makan-shell-v1";
 
+const generic = "/s/0000000";
+
 const shell = [
   "/",
   "/new",
+  generic,
   "/fonts/chivo.woff2",
   "/fonts/jetbrains-mono.woff2",
 ];
@@ -36,9 +39,16 @@ const serve = async (request) => {
   const hit = await cache.match(request);
   if (hit) return hit;
 
-  const response = await fetch(request);
-  if (response.ok) await cache.put(request, response.clone());
-  return response;
+  try {
+    const response = await fetch(request);
+    if (response.ok) await cache.put(request, response.clone());
+    return response;
+  } catch (unreachable) {
+    const fallback =
+      request.mode === "navigate" ? await cache.match(generic) : undefined;
+    if (fallback) return fallback;
+    throw unreachable;
+  }
 };
 
 self.addEventListener("fetch", (event) => {
