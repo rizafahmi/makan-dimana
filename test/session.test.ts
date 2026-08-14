@@ -58,24 +58,41 @@ test("listPlaces orders by votes, with ties keeping slot order", () => {
   );
 });
 
-test("winnerView carries the Indonesian winner copy for each outcome", () => {
+const slots = (places: { slot: number }[]) => places.map((place) => place.slot);
+
+test("winnerView splits the winners off the list with their Indonesian copy", () => {
   const leader = winnerView(
-    listPlaces(row({ place1_votes: 2, place2_votes: 1 })),
+    listPlaces(row({ place1_votes: 4, place2_votes: 2 })),
     false,
   );
-  assert.deepEqual(leader.winners, [1]);
-  assert.equal(leader.label, "Pemenang");
+  assert.deepEqual(slots(leader.winners), [1]);
+  assert.deepEqual(slots(leader.others), [2]);
+  assert.equal(leader.kicker, "Pemenang");
+  assert.equal(leader.sub, "4 dari 6 suara");
   assert.equal(leader.note, null);
 
   const tie = winnerView(
-    listPlaces(row({ place1_votes: 3, place2_votes: 3 })),
+    listPlaces(
+      row({
+        place1_votes: 3,
+        place2_votes: 3,
+        place3_name: "Sate",
+        place3_votes: 1,
+      }),
+    ),
     false,
   );
-  assert.deepEqual(tie.winners, [1, 2]);
-  assert.equal(tie.note, "Seri!");
+  assert.deepEqual(slots(tie.winners), [1, 2]);
+  assert.deepEqual(slots(tie.others), [3]);
+  assert.equal(tie.kicker, "Seri");
+  assert.equal(tie.sub, "3 suara masing-masing");
+  assert.equal(tie.note, null);
 
   const allZero = winnerView(listPlaces(row({})), false);
   assert.deepEqual(allZero.winners, []);
+  assert.deepEqual(slots(allZero.others), [1, 2]);
+  assert.equal(allZero.kicker, null);
+  assert.equal(allZero.sub, null);
   assert.equal(allZero.note, "Belum ada pemenang");
 
   const open = winnerView(
@@ -83,6 +100,8 @@ test("winnerView carries the Indonesian winner copy for each outcome", () => {
     true,
   );
   assert.deepEqual(open.winners, []);
+  assert.deepEqual(slots(open.others), [1, 2]);
+  assert.equal(open.kicker, null);
   assert.equal(open.note, null);
 });
 

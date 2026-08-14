@@ -146,16 +146,41 @@ const mountSession = (root: HTMLElement) => {
 
     const places = listPlaces(session);
     const tally = tallyView(places);
-    const { winners, label, note } = winnerView(places, isOpen);
+    const { winners, others, kicker, sub, note } = winnerView(
+      tally.places,
+      isOpen,
+    );
 
     const summary = el("p", tally.text);
     summary.className = "km-tally";
     root.append(summary);
 
+    if (kicker !== null) {
+      const hero = el("div");
+      hero.className = "km-hero";
+      if (winners.length > 1) hero.dataset.tie = "true";
+
+      const kick = el("span", kicker);
+      kick.className = "km-hero-kick";
+      hero.append(kick);
+
+      for (const winner of winners) {
+        const who = el("p", winner.name);
+        who.className = "km-hero-who";
+        hero.append(who);
+      }
+      if (sub !== null) {
+        const line = el("span", sub);
+        line.className = "km-hero-sub";
+        hero.append(line);
+      }
+      root.append(hero);
+    }
+
     const list = el("ul");
     list.className = "km-list";
 
-    for (const place of tally.places) {
+    for (const place of others) {
       const slot = String(place.slot);
       const item = el("li");
       item.className = isOpen ? "km-place km-bar" : "km-place";
@@ -173,13 +198,6 @@ const mountSession = (root: HTMLElement) => {
       const name = el("span", place.name);
       name.className = "km-place-name";
       item.append(name);
-
-      if (winners.includes(place.slot)) {
-        item.dataset.winner = "true";
-        const kicker = el("strong", label);
-        kicker.className = "km-kicker";
-        item.append(kicker);
-      }
 
       if (isOpen) {
         const pct = el("span", `${place.share}%`);

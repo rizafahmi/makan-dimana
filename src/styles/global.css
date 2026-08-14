@@ -66,6 +66,7 @@
   --space-4: 16px;
   --space-5: 20px;
   --space-6: 24px;
+  --space-7: 28px;
 
   --measure: 40rem;
   --page-pad-phone: 24px 20px 28px;
@@ -413,22 +414,36 @@ p {
   color: var(--faint);
 }
 
-.km-place[data-winner="true"] {
+.km-hero {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-7) var(--space-5);
+  border-radius: var(--radius);
   background: var(--accent);
-  border-left-color: var(--accent);
   color: var(--text-on-accent);
 }
 
-.km-place[data-winner="true"] .km-place-name,
-.km-place[data-winner="true"] .km-place-votes,
-.km-place[data-winner="true"] .km-kicker {
-  color: var(--text-on-accent);
+.km-hero[data-tie="true"] {
+  background: var(--surface);
+  color: var(--text);
 }
 
-.km-kicker {
+.km-hero-kick {
   font: var(--weight-display) var(--size-mono-fine)/1 var(--font-sans);
   letter-spacing: var(--tracking-kicker);
   text-transform: uppercase;
+}
+
+.km-hero-who {
+  font: var(--weight-display) var(--size-h1-phone)/var(--leading-display)
+    var(--font-sans);
+  letter-spacing: var(--tracking-display);
+}
+
+.km-hero-sub {
+  font: var(--weight-body) var(--size-mono-fine)/1.4 var(--font-mono);
+  opacity: 0.7;
 }
 
 .km-bar {

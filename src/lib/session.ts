@@ -23,17 +23,6 @@ export const winningSlots = (places: Place[]) => {
     .map((place) => place.slot);
 };
 
-export const winnerView = (places: Place[], isOpen: boolean) => {
-  const winners = isOpen ? [] : winningSlots(places);
-  const note =
-    isOpen || winners.length === 1
-      ? null
-      : winners.length === 0
-        ? "Belum ada pemenang"
-        : "Seri!";
-  return { winners, label: "Pemenang", note };
-};
-
 export const tallyView = (places: Place[]) => {
   const total = places.reduce((sum, place) => sum + place.votes, 0);
   return {
@@ -44,4 +33,21 @@ export const tallyView = (places: Place[]) => {
       share: total === 0 ? 0 : Math.round((place.votes / total) * 100),
     })),
   };
+};
+
+export const winnerView = <T extends Place>(places: T[], isOpen: boolean) => {
+  const top = isOpen ? [] : winningSlots(places);
+  const winners = places.filter((place) => top.includes(place.slot));
+  const others = places.filter((place) => !top.includes(place.slot));
+  const votes = winners[0]?.votes ?? 0;
+  const kicker =
+    winners.length === 0 ? null : winners.length === 1 ? "Pemenang" : "Seri";
+  const sub =
+    winners.length === 0
+      ? null
+      : winners.length === 1
+        ? `${votes} dari ${tallyView(places).total} suara`
+        : `${votes} suara masing-masing`;
+  const note = isOpen || winners.length > 0 ? null : "Belum ada pemenang";
+  return { winners, others, kicker, sub, note };
 };
