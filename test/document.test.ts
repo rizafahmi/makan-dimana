@@ -40,7 +40,9 @@ test("a creator document carries the session's identity", () => {
 });
 
 test("an up vote increments its own slot and leaves the rest alone", () => {
-  assert.deepEqual(applyVote({ ...emptyDoc("a3f1"), up: { "1": 1, "2": 3 } }, 1, 1), {
+  const before = { ...emptyDoc("a3f1"), up: { "1": 1, "2": 3 } };
+
+  assert.deepEqual(applyVote(before, 1, 1), {
     device: "a3f1",
     title: null,
     places: null,
@@ -52,7 +54,9 @@ test("an up vote increments its own slot and leaves the rest alone", () => {
 });
 
 test("a cancelling vote increments the slot's down counter", () => {
-  assert.deepEqual(applyVote({ ...emptyDoc("a3f1"), down: { "1": 1 } }, 1, -1), {
+  const before = { ...emptyDoc("a3f1"), down: { "1": 1 } };
+
+  assert.deepEqual(applyVote(before, 1, -1), {
     device: "a3f1",
     title: null,
     places: null,
