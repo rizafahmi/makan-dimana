@@ -200,6 +200,14 @@ reads and writes the same row as the canonical one.
   and this one is only ever this device's
 - `data-state` goes straight to `ready`. `loading`, `error` and the retry button are
   gone; `missing` remains and now also covers a session this device does not hold
+- Visiting a valid `/s/[id]` writes an empty stored record for that id, even when the
+  device holds no documents for it. ADR 0005 makes links the only index, so a device
+  that opens a shared link offline and closes the tab would otherwise lose that session
+  permanently. A junk record for a mistyped-but-canonical id costs about thirty bytes,
+  and `localList` already drops it for having no creator document
+- `utcTimestamp(at)` in `src/lib/time.ts` formats a `Date` into `datetime('now')`
+  shape, so `new Date()` at the create call site is the only clock reading in the path
+  and `creatorDoc` stays pure
 - The service worker is `public/sw.js` with a hand-bumped `version` constant as its
   cache name, `skipWaiting()` and `clients.claim()`, deleting every other cache on
   activate
@@ -230,9 +238,11 @@ a temporary server-side create would be code written only to be deleted.
 - [x] Playwright and `@playwright/test` are installed and `pnpm test` chains both
       runners
 - [x] The store port and its IndexedDB adapter, with the device id
-- [ ] `/s/[id]` renders from the local store and votes write locally
+- [x] `/new` creates locally, then `/s/[id]` renders from the local store and votes
+      write locally. Planned as two steps and done as one, in that order: neither is
+      observable alone, because nothing populates the store until creating is
+      client-side, and nothing shows what create wrote until the session page reads it
 - [ ] `/` renders the local list; `GET /api/sessions` is deleted
-- [ ] `/new` creates locally and navigates to the new session
 - [ ] Sync on load, `online` and `visibilitychange`
 - [ ] The service worker precaches the shell
 - [ ] Delete dead code; update `AGENTS.md`, `README.md`, `PLAN.md` and `docs/talk.md`
