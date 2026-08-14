@@ -363,3 +363,41 @@ test("recordVote and setSessionOpen return the updated session", async () => {
   assert.equal(closed.session.is_open, 0);
   assert.equal(closed.session.place1_votes, 1);
 });
+
+test("putDoc stores a document listDocs hands back byte-identical", async () => {
+  const { listDocs, putDoc } = await import("../src/lib/db.ts");
+
+  const doc = '{"device":"a3f1","title":"Makan siang","up":{"1":1}}';
+  putDoc("abc12qx", "a3f1", doc);
+
+  assert.deepEqual(listDocs("abc12qx"), [doc]);
+});
+
+test("a device's second document replaces its first rather than joining it", async () => {
+  const { listDocs, putDoc } = await import("../src/lib/db.ts");
+
+  putDoc("rep1ac0", "a3f1", '{"up":{}}');
+  putDoc("rep1ac0", "a3f1", '{"up":{"1":1}}');
+
+  assert.deepEqual(listDocs("rep1ac0"), ['{"up":{"1":1}}']);
+});
+
+test("two devices in one session are two documents", async () => {
+  const { listDocs, putDoc } = await import("../src/lib/db.ts");
+
+  putDoc("tw0d3v0", "a3f1", '{"device":"a3f1"}');
+  putDoc("tw0d3v0", "b7c2", '{"device":"b7c2"}');
+
+  assert.deepEqual(listDocs("tw0d3v0").toSorted(), [
+    '{"device":"a3f1"}',
+    '{"device":"b7c2"}',
+  ]);
+});
+
+test("a session nobody has written to holds no documents", async () => {
+  const { listDocs, putDoc } = await import("../src/lib/db.ts");
+
+  putDoc("kn0wn00", "a3f1", '{"device":"a3f1"}');
+
+  assert.deepEqual(listDocs("unkn0wn"), []);
+});

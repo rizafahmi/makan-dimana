@@ -33,6 +33,13 @@ const open = () => {
       place4_name TEXT CHECK (place4_name IS NULL OR length(place4_name) >0),
       place4_votes INTEGER NOT NULL DEFAULT 0 CHECK (place4_votes >= 0),
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+  CREATE TABLE IF NOT EXISTS session_docs (
+      session_id TEXT NOT NULL,
+      device_id TEXT NOT NULL,
+      doc TEXT NOT NULL,
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      PRIMARY KEY (session_id, device_id)
     )
   `);
   return connection;
@@ -41,6 +48,18 @@ const open = () => {
 const store = globalThis as typeof globalThis & { makanDb?: DatabaseSync };
 
 export const db = (store.makanDb ??= open());
+
+export const putDoc = (sessionId: string, deviceId: string, doc: string) => {
+  db.prepare(
+    "INSERT OR REPLACE INTO session_docs (session_id, device_id, doc) VALUES (?, ?, ?)",
+  ).run(sessionId, deviceId, doc);
+};
+
+export const listDocs = (sessionId: string) =>
+  db
+    .prepare("SELECT doc FROM session_docs WHERE session_id = ?")
+    .all(sessionId)
+    .map((row) => String(row.doc));
 
 type SessionInput = { title: string; places: string[] };
 
