@@ -42,13 +42,12 @@ export const applyVote = (doc: SessionDoc, slot: number, delta: number) =>
 export const applyClose = (doc: SessionDoc) => ({ ...doc, closed: true });
 
 export const parseDoc = (raw: string): SessionDoc | null => {
-  let doc: SessionDoc | null = null;
   try {
-    doc = JSON.parse(raw);
+    const doc = JSON.parse(raw) as SessionDoc | null;
+    return typeof doc?.device === "string" ? doc : null;
   } catch {
     return null;
   }
-  return typeof doc?.device === "string" ? doc : null;
 };
 
 export const mergeDocs = (docs: SessionDoc[]) => {
