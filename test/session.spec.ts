@@ -14,6 +14,23 @@ const createSession = async (
   await expect(page).toHaveURL(/\/s\/[0-9a-hjkmnp-tv-z]{7}$/);
 };
 
+const storedIds = (page: Page) =>
+  page.evaluate(
+    () =>
+      new Promise<string[]>((resolve, reject) => {
+        const open = indexedDB.open("makan", 1);
+        open.onerror = () => reject(open.error);
+        open.onsuccess = () => {
+          const keys = open.result
+            .transaction("sessions", "readonly")
+            .objectStore("sessions")
+            .getAllKeys();
+          keys.onsuccess = () => resolve(keys.result.map(String));
+          keys.onerror = () => reject(keys.error);
+        };
+      }),
+  );
+
 test("a session created on this device renders from the local store", async ({
   page,
 }) => {
@@ -145,4 +162,16 @@ test("a session this device does not hold reads as missing, not as loading", asy
   await expect(root.getByRole("status")).toHaveText("Sesi tidak ditemukan");
   await expect(page).toHaveTitle("Sesi tidak ditemukan");
   await expect(page.locator("[data-share]")).toBeHidden();
+});
+
+test("opening a link records the session, so closing the tab cannot lose it", async ({
+  page,
+}) => {
+  await page.goto("/s/zzzzzzz");
+  await expect(page.locator("[data-session]")).toHaveAttribute(
+    "data-state",
+    "missing",
+  );
+
+  expect(await storedIds(page)).toEqual(["zzzzzzz"]);
 });

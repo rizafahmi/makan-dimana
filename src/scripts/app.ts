@@ -86,7 +86,9 @@ const mountSession = async (root: HTMLElement) => {
   const share = document.querySelector<HTMLElement>("[data-share]");
 
   const device = await deviceId();
-  let stored = (await readSession(id)) ?? { id, docs: [] };
+  const first = await readSession(id);
+  let stored = first ?? { id, docs: [] };
+  if (first === undefined) await writeSession(stored);
   let voted: string | null = null;
   let held = false;
   let timer = 0;
