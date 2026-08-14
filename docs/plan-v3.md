@@ -94,6 +94,27 @@ missing key reads as zero, so a device that voted for one place holds one entry 
 than three zeros. `Partial` is what makes the empty `{}` on a fresh document assignable
 under `astro/tsconfigs/strict`.
 
+`src/lib/merge.ts` owns the whole document vocabulary: the shape, the four transforms
+that produce a device's next document, and the merge that reads a pile of them. Every
+transform returns a new document rather than editing the one it was given, because the
+store hands the same object to the renderer.
+
+- `emptyDoc(device)` is what a device starts with when it opens someone else's
+  session: no title, no places, no `created_at`, nothing voted, not closed
+- `creatorDoc(device, title, places, createdAt)` is the one document that carries the
+  session's identity. It takes the timestamp instead of reading a clock, the way
+  `relativeTime(then, now)` takes `now`, so it stays pure
+- `applyVote(doc, slot, delta)` increments `up` for a positive delta and `down` for a
+  negative one. Both are increments - `down` counts cancellations and is never itself
+  negative. The argument order matches v2's `recordVote(id, place, delta)`
+- `applyClose(doc)` sets `closed`. There is deliberately no `applyReopen`: closing is
+  one-way, so the merge can OR the flags and needs no clocks - see
+  `docs/adr/0004-closing-is-permanent.md`
+
+The transforms trust their inputs. `validateCreate` is what rejects an empty title or a
+one-place session and it runs in the browser before `creatorDoc` is reached, so nothing
+here re-checks; a slot that no place occupies is a counter no view reads.
+
 ## Merge
 
 `mergeDocs(docs)` returns v2's row shape: `title`, `is_open` as 1 or 0,
@@ -154,7 +175,8 @@ the client, then the service worker.
 - [ ] `mergeDocs` sums PN counters across documents, unclamped and possibly negative
 - [ ] `mergeDocs` closes when any document is closed, picks the lower device id when
       two documents both claim a title, and returns null when none does
-- [ ] `emptyDoc`, `applyVote` and `applyClose` as pure document transforms
+- [ ] `emptyDoc`, `creatorDoc`, `applyVote` and `applyClose` as pure document
+      transforms
 - [ ] Id generation moves to `id.ts` on `crypto.getRandomValues`
 - [ ] `session_docs` replaces `vote_sessions`; `GET` and `POST /api/sessions/[id]`
       become the relay, and the e2e suites are rewritten onto it in the same commit
