@@ -3,9 +3,11 @@ import Base from "../layouts/Base.astro";
 ---
 
 <Base title="Dapurnya lagi meledug">
-  <h1>Dapurnya lagi meledug</h1>
-  <p>
-    Ada yang salah di server. <a href={Astro.url.pathname}>Coba lagi nanti.</a>
-    <p><a href="/">Kembali ke daftar sesi</a></p>
+  <h1 class="km-h1">Dapurnya lagi meledug</h1>
+  <p class="km-lede">
+    Ada yang salah di server. <a class="km-back" href={Astro.url.pathname}
+      >Coba lagi nanti.</a
+    >
   </p>
+  <p><a class="km-back" href="/">Kembali ke daftar sesi</a></p>
 </Base>

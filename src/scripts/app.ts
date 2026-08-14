@@ -57,7 +57,10 @@ const loader = (
   const failed = () => {
     message(root, "error", failureText);
     onState("error", failureText);
-    root.append(button("Coba lagi", () => void run()));
+    const retry = button("Coba lagi", () => void run());
+    retry.className = "km-button";
+    retry.dataset.variant = "outline";
+    root.append(retry);
   };
 
   const run = async () => {
@@ -124,40 +127,83 @@ const mountSession = (root: HTMLElement) => {
     const title = String(session.title);
     document.title = title;
     if (share) share.hidden = false;
-    root.append(el("h1", title));
 
     const isOpen = session.is_open === 1;
+    const open = String(session.is_open);
+
+    const head = el("div");
+    head.className = "km-shead";
+    const state = el("span", isOpen ? "Masih buka" : "Sudah ditutup");
+    state.className = "km-state";
+    state.dataset.open = open;
+    const sid = el("span", id);
+    sid.className = "km-id";
+    head.append(state, sid);
+
+    const heading = el("h1", title);
+    heading.className = "km-h1";
+    root.append(head, heading);
+
     const places = listPlaces(session);
     const { winners, label, note } = winnerView(places, isOpen);
     const list = el("ul");
+    list.className = "km-list";
 
     for (const place of places) {
       const slot = String(place.slot);
       const item = el("li");
+      item.className = "km-place";
       item.dataset.place = slot;
       item.dataset.votes = String(place.votes);
-      item.append(el("span", `${place.name}: ${place.votes} suara`));
+      item.dataset.open = open;
+
+      const name = el("span", place.name);
+      name.className = "km-place-name";
+      item.append(name);
 
       if (winners.includes(place.slot)) {
         item.dataset.winner = "true";
-        item.append(el("strong", label));
+        const kicker = el("strong", label);
+        kicker.className = "km-kicker";
+        item.append(kicker);
       }
+
+      const votes = el("span", String(place.votes));
+      votes.className = "km-place-votes";
+      const unit = el("span", " suara");
+      unit.className = "km-sr";
+      item.append(votes, unit);
+
       if (isOpen) {
-        item.append(
-          control("Naik", "upvote", slot),
-          control("Turun", "downvote", slot),
-        );
+        const pair = el("div");
+        pair.className = "km-vote";
+        const up = control("Naik", "upvote", slot);
+        up.dataset.dir = "up";
+        const down = control("Turun", "downvote", slot);
+        down.dataset.dir = "down";
+        pair.append(up, down);
+        item.append(pair);
       }
       list.append(item);
     }
     root.append(list);
 
-    if (note !== null) root.append(el("p", note));
-    root.append(
-      isOpen
-        ? control("Tutup sesi", "close", null)
-        : control("Buka lagi", "reopen", null),
-    );
+    if (note !== null) {
+      const tally = el("p", note);
+      tally.className = "km-tally";
+      root.append(tally);
+    }
+
+    const actions = el("div");
+    actions.className = "km-actions";
+    const toggle = isOpen
+      ? control("Tutup sesi", "close", null)
+      : control("Buka lagi", "reopen", null);
+    toggle.className = "km-button";
+    toggle.dataset.variant = "outline";
+    actions.append(toggle);
+    root.append(actions);
+
     if (notice !== null) {
       root.append(status(notice));
       notice = null;
@@ -218,25 +264,40 @@ const mountLanding = (root: HTMLElement) => {
       return;
     }
 
+    const head = el("div");
+    head.className = "km-subhead";
+    head.append(el("span", "Sesi"), el("span", `${sessions.length} sesi`));
+
     const now = new Date();
     const list = el("ul");
+    list.className = "km-list";
 
     for (const session of sessions) {
       const item = el("li");
-      const link = el("a", session.title) as HTMLAnchorElement;
+      item.className = "km-row";
+      item.dataset.open = String(session.is_open);
+
+      const link = el("a") as HTMLAnchorElement;
       link.href = `/s/${session.id}`;
+
+      const title = el("span", session.title);
+      title.className = "km-row-title";
 
       const state = el(
         "span",
         session.is_open === 1 ? "Masih buka" : "Sudah ditutup",
       );
-      state.dataset.open = String(session.is_open);
+      state.className = "km-row-state";
 
       const created = new Date(`${session.created_at.replace(" ", "T")}Z`);
-      item.append(link, state, el("span", relativeTime(created, now)));
+      const time = el("span", relativeTime(created, now));
+      time.className = "km-row-time";
+
+      link.append(title, state, time);
+      item.append(link);
       list.append(item);
     }
-    root.append(list);
+    root.append(head, list);
   };
 
   const { run } = loader(root, "/api/sessions", draw, null, () => {});

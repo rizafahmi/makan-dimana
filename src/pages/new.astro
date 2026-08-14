@@ -31,59 +31,94 @@ if (Astro.request.method === "POST") {
 ---
 
 <Base title="Bikin sesi baru">
-  <h1>Bikin sesi baru</h1>
-  <form method="post">
-    <p>
+  <h1 class="km-h1">Bikin sesi baru</h1>
+  <form class="km-form" method="post">
+    <div class="km-field" data-invalid={errors.title ? "true" : undefined}>
       <label for="title">Judul</label>
       <input
+        class="km-input"
         name="title"
         id="title"
         value={values.title}
         aria-describedby={errors.title ? "title-error" : undefined}
       />
-      {errors.title && <span id="title-error">{errors.title}</span>}
-    </p>
-    <p>
+      {
+        errors.title && (
+          <span class="km-error" id="title-error">
+            {errors.title}
+          </span>
+        )
+      }
+    </div>
+    <div class="km-field" data-invalid={errors.place1 ? "true" : undefined}>
       <label for="place1">Tempat 1</label>
       <input
+        class="km-input"
         name="place1"
         id="place1"
         value={values.place1}
         aria-describedby={errors.place1 ? "place1-error" : undefined}
       />
-      {errors.place1 && <span id="place1-error">{errors.place1}</span>}
-    </p>
-    <p>
+      {
+        errors.place1 && (
+          <span class="km-error" id="place1-error">
+            {errors.place1}
+          </span>
+        )
+      }
+    </div>
+    <div class="km-field" data-invalid={errors.place2 ? "true" : undefined}>
       <label for="place2">Tempat 2</label>
       <input
+        class="km-input"
         name="place2"
         id="place2"
         value={values.place2}
         aria-describedby={errors.place2 ? "place2-error" : undefined}
       />
-      {errors.place2 && <span id="place3-error">{errors.place2}</span>}
-    </p>
-    <p>
+      {
+        errors.place2 && (
+          <span class="km-error" id="place3-error">
+            {errors.place2}
+          </span>
+        )
+      }
+    </div>
+    <div class="km-field" data-invalid={errors.place3 ? "true" : undefined}>
       <label for="place3">Tempat 3</label>
       <input
+        class="km-input"
         name="place3"
         id="place3"
         value={values.place3}
         aria-describedby={errors.place3 ? "place3-error" : undefined}
       />
-      {errors.place3 && <span id="place3-error">{errors.place3}</span>}
-    </p>
-    <p>
+      {
+        errors.place3 && (
+          <span class="km-error" id="place3-error">
+            {errors.place3}
+          </span>
+        )
+      }
+    </div>
+    <div class="km-field" data-invalid={errors.place4 ? "true" : undefined}>
       <label for="place4">Tempat 4</label>
       <input
+        class="km-input"
         name="place4"
         id="place4"
         value={values.place4}
         aria-describedby={errors.place4 ? "place4-erroor" : undefined}
       />
-      {errors.place4 && <span id="place4-error">{errors.place4}</span>}
-    </p>
-    {errors.places && <p>{errors.places}</p>}
-    <button>Bikin sesi</button>
+      {
+        errors.place4 && (
+          <span class="km-error" id="place4-error">
+            {errors.place4}
+          </span>
+        )
+      }
+    </div>
+    {errors.places && <p class="km-form-error">{errors.places}</p>}
+    <button class="km-button" data-block="true">Bikin sesi</button>
   </form>
 </Base>

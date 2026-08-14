@@ -11,12 +11,21 @@ const qr = await qrSvg(shareUrl);
 ---
 
 <Base title="Sesi vote">
+  <div class="km-share" data-share="true">
+    {
+      qr && (
+        <div
+          class="km-share-plate"
+          role="img"
+          aria-label="Kode QR untuk sesi ini"
+          set:html={qr}
+        />
+      )
+    }
+    <p class="km-share-url">{shareUrl}</p>
+  </div>
   <div data-session="true" data-id={canonicalId} data-state="loading">
     <p role="status">Memuat...</p>
   </div>
   <noscript>Halaman ini butuh JavaScript untuk menampilkan sesi.</noscript>
-  <div data-share="true">
-    <p>{shareUrl}</p>
-    {qr && <div role="img" aria-label="Kode QR untuk sesi ini" set:html={qr} />}
-  </div>
 </Base>
