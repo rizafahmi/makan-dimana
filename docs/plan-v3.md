@@ -210,8 +210,10 @@ All three handlers normalize the id before touching the store or the registry, s
 lookalike-typo link reads, writes and subscribes to the same row as the canonical one.
 
 The stream's frames are `event: ready\ndata: ok` once, on connect; `data: changed`
-whenever a document for that session is written; and a `:` comment line every
-`MAKAN_BEAT` milliseconds, 15000 by default.
+whenever a document for that session is written to something other than what was
+already there; and a `:` comment line every `MAKAN_BEAT` milliseconds, 15000 by
+default. A POST that stores the same bytes still answers 204 and notifies nobody -
+see `docs/adr/0008-changes-arrive-over-an-event-stream.md`.
 
 ## Conventions
 

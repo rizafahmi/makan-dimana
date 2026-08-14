@@ -53,6 +53,13 @@ they reach everyone else at the next load or `online`.
   relay knowing whose document it just stored and whose connection each subscriber is,
   so it does not: the pull comes back holding the device's own document, `mergePulled`
   skips it, and no repaint happens.
+- A write that stores the same bytes tells nobody. Publishing every write unconditionally
+  is what makes a device's own notification a cycle rather than an echo: the sync it
+  triggers pushes before it pulls, that push republishes, and one tap turns into an
+  endless exchange - measured at over five hundred pushes in a second and a half, on
+  every device on the session at once. The relay compares the stored row to the incoming
+  one and only publishes when they differ, which is a byte comparison and not a parse,
+  so `0003` still holds. The self-notification stays as designed; it just terminates.
 - The stream cannot deliver what happened while a device was away, and nothing replays
   it - there is no `Last-Event-ID` handling and no cursor, because there is no event
   log to seek in. Load and `online` remain the catch-up triggers. A device that sleeps

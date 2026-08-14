@@ -34,9 +34,15 @@ const store = globalThis as typeof globalThis & { makanDb?: DatabaseSync };
 export const db = (store.makanDb ??= open());
 
 export const putDoc = (sessionId: string, deviceId: string, doc: string) => {
-  db.prepare(
-    "INSERT OR REPLACE INTO session_docs (session_id, device_id, doc) VALUES (?, ?, ?)",
-  ).run(sessionId, deviceId, doc);
+  const { changes } = db
+    .prepare(
+      `INSERT INTO session_docs (session_id, device_id, doc) VALUES (?, ?, ?)
+       ON CONFLICT (session_id, device_id)
+       DO UPDATE SET doc = excluded.doc, updated_at = datetime('now')
+       WHERE doc <> excluded.doc`,
+    )
+    .run(sessionId, deviceId, doc);
+  return Number(changes) > 0;
 };
 
 export const listDocs = (sessionId: string) =>

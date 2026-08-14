@@ -26,7 +26,6 @@ export const POST: APIRoute = async ({ params, request }) => {
     return fail("bad_request", 400);
   }
 
-  putDoc(id, device, doc);
-  publish(id);
+  if (putDoc(id, device, doc)) publish(id);
   return new Response(null, { status: 204 });
 };

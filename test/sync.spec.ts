@@ -405,3 +405,27 @@ test("a device told about its own write does not repaint under itself", async ({
   await expect(warteg(page)).toHaveAttribute("data-voted", "true");
   await expect(warteg(page)).toBeFocused();
 });
+
+test("a device told about its own write stops after answering it once", async ({
+  page,
+}) => {
+  const link = await afterSync(page, () => createSession(page, "Makan hemat"));
+  const endpoint = link.replace("/s/", "/api/sessions/");
+  await page.waitForTimeout(settle);
+
+  const pushes: string[] = [];
+  page.on("request", (request) => {
+    if (
+      request.method() === "POST" &&
+      new URL(request.url()).pathname === endpoint
+    ) {
+      pushes.push(request.url());
+    }
+  });
+
+  await warteg(page).click();
+  await expect(warteg(page)).toHaveAttribute("data-votes", "1");
+  await page.waitForTimeout(settle);
+
+  expect(pushes.length).toBeLessThanOrEqual(2);
+});
