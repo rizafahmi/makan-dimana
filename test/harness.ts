@@ -12,13 +12,13 @@ const startTimeout = 20_000;
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-export const startServer = async () => {
+export const startServer = async (env: Record<string, string> = {}) => {
   const dir = await mkdtemp(join(tmpdir(), "makan-e2e-"));
   const db = resolve(dir, "makan.db");
   assert.notEqual(db, resolve("data/makan.db"));
 
   const child = spawn(process.execPath, [entry], {
-    env: { ...process.env, MAKAN_DB: db, HOST: "127.0.0.1", PORT: "0" },
+    env: { ...process.env, MAKAN_DB: db, HOST: "127.0.0.1", PORT: "0", ...env },
   });
   let stdout = "";
   let stderr = "";

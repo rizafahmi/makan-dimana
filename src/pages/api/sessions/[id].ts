@@ -2,6 +2,7 @@ import type { APIRoute } from "astro";
 import { listDocs, putDoc } from "../../../lib/db.ts";
 import { normalizeSessionId } from "../../../lib/id.ts";
 import { readForm } from "../../../lib/form.ts";
+import { publish } from "../../../lib/relay.ts";
 
 const fail = (error: string, status: number) =>
   Response.json({ error }, { status });
@@ -26,5 +27,6 @@ export const POST: APIRoute = async ({ params, request }) => {
   }
 
   putDoc(id, device, doc);
+  publish(id);
   return new Response(null, { status: 204 });
 };
