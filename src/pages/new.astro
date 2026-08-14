@@ -78,7 +78,7 @@ if (Astro.request.method === "POST") {
       />
       {
         errors.place2 && (
-          <span class="km-error" id="place3-error">
+          <span class="km-error" id="place2-error">
             {errors.place2}
           </span>
         )
@@ -108,7 +108,7 @@ if (Astro.request.method === "POST") {
         name="place4"
         id="place4"
         value={values.place4}
-        aria-describedby={errors.place4 ? "place4-erroor" : undefined}
+        aria-describedby={errors.place4 ? "place4-error" : undefined}
       />
       {
         errors.place4 && (

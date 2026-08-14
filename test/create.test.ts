@@ -110,3 +110,32 @@ test("the create form labels every control and links its errors", async () => {
   );
   assert.match(invalid, /id="title-error"/);
 });
+
+test("every create form error is linked to an existing, unique id", async () => {
+  const res = await postForm(server.origin, "/new", {
+    title: "",
+    place1: "W".repeat(61),
+    place2: "S".repeat(61),
+    place3: "B".repeat(61),
+    place4: "N".repeat(61),
+  });
+  assert.equal(res.status, 422);
+  const html = await res.text();
+
+  const ids = [...html.matchAll(/\sid="([^"]+)"/g)].map((m) => String(m[1]));
+  const described = [...html.matchAll(/aria-describedby="([^"]+)"/g)].map((m) =>
+    String(m[1]),
+  );
+
+  assert.deepEqual(described.sort(), [
+    "place1-error",
+    "place2-error",
+    "place3-error",
+    "place4-error",
+    "title-error",
+  ]);
+  for (const target of described) {
+    assert.ok(ids.includes(target), `${target} describes nothing`);
+  }
+  assert.equal(new Set(ids).size, ids.length, `duplicate id among ${ids}`);
+});
