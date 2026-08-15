@@ -1,0 +1,28 @@
+---
+import Base from "../../../layouts/Base.astro";
+import { normalizeSessionId } from "../../../lib/id.ts";
+import { qrSvg } from "../../../lib/share.ts";
+
+const canonicalId = normalizeSessionId(Astro.params.id ?? "");
+if (canonicalId === null) return new Response(null, { status: 404 });
+
+const shareUrl = new URL(`/s/${canonicalId}`, Astro.url).href;
+const qr = await qrSvg(shareUrl);
+---
+
+<Base title="Sesi vote" board>
+  <div class="km-share" data-share="true">
+    {
+      qr && (
+        <div
+          class="km-share-plate"
+          role="img"
+          aria-label="Kode QR untuk sesi ini"
+          set:html={qr}
+        />
+      )
+    }
+    <p class="km-share-url">{shareUrl}</p>
+  </div>
+  <div data-session="true" data-id={canonicalId} data-board="true"></div>
+</Base>
