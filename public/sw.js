@@ -1,14 +1,19 @@
-const version = "makan-shell-v5";
+const version = "makan-shell-v6";
 
 const generic = "/s/0000000";
+const genericBoard = `${generic}/board`;
 
 const shell = [
   "/",
   "/new",
   generic,
+  genericBoard,
   "/fonts/chivo.woff2",
   "/fonts/jetbrains-mono.woff2",
 ];
+
+const fallbackFor = (pathname) =>
+  pathname.endsWith("/board") ? genericBoard : generic;
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -45,7 +50,9 @@ const serve = async (request) => {
     return response;
   } catch (unreachable) {
     const fallback =
-      request.mode === "navigate" ? await cache.match(generic) : undefined;
+      request.mode === "navigate"
+        ? await cache.match(fallbackFor(new URL(request.url).pathname))
+        : undefined;
     if (fallback) return fallback;
     throw unreachable;
   }

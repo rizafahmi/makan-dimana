@@ -208,3 +208,34 @@ test.describe("on a projector", () => {
     expect(phone).toBe(44);
   });
 });
+
+const controlled = (page: Page) =>
+  expect
+    .poll(() => page.evaluate(() => navigator.serviceWorker.controller !== null))
+    .toBe(true);
+
+const forgetShell = (page: Page, path: string) =>
+  page.evaluate(async (gone) => {
+    for (const name of await caches.keys()) {
+      await (await caches.open(name)).delete(gone);
+    }
+  }, path);
+
+test("a board reloaded offline comes back as a board, not as the phone", async ({
+  context,
+  page,
+}) => {
+  const link = await createSession(page, "Makan siang tim");
+  await controlled(page);
+  await page.goto(`${link}/board`);
+  await forgetShell(page, `${link}/board`);
+
+  await context.setOffline(true);
+  await page.goto(`${link}/board`);
+
+  await expect(page.locator("main.km-board")).toHaveCount(1);
+  await expect(caps(page)).toHaveText(["1", "2"]);
+  await expect(
+    page.getByRole("heading", { name: "Makan siang tim" }),
+  ).toBeVisible();
+});
