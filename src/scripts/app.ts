@@ -28,8 +28,12 @@ import {
 type Session = NonNullable<ReturnType<typeof mergeDocs>>;
 
 const holdDelay = 500;
+const slotKeys = ["Digit1", "Digit2", "Digit3", "Digit4"];
+const closeKey = "KeyT";
 const hintText =
   "Ketuk baris buat vote. Tahan atau Shift+klik buat batalin.";
+const legendText =
+  "Pencet 1-4 buat vote. Shift+angka buat batalin. T buat tutup sesi.";
 const missingText = "Sesi tidak ditemukan";
 
 const el = (tag: string, text?: string) => {
@@ -62,6 +66,7 @@ const message = (root: HTMLElement, state: string, text: string) => {
 
 const mountSession = async (root: HTMLElement) => {
   const share = document.querySelector<HTMLElement>("[data-share]");
+  const board = root.dataset.board === "true";
 
   const missing = () => {
     message(root, "missing", missingText);
@@ -207,6 +212,12 @@ const mountSession = async (root: HTMLElement) => {
         fill.className = "km-fill";
         fill.style.width = `${place.share}%`;
         row.append(fill);
+
+        if (board) {
+          const cap = el("span", slot);
+          cap.className = "km-key";
+          row.append(cap);
+        }
       }
 
       const name = el("span", place.name);
@@ -231,7 +242,7 @@ const mountSession = async (root: HTMLElement) => {
     if (others.length > 0) root.append(list);
 
     if (isOpen) {
-      const hint = el("p", hintText);
+      const hint = el("p", board ? legendText : hintText);
       hint.className = "km-hint";
       root.append(hint);
     }
@@ -300,7 +311,17 @@ const mountSession = async (root: HTMLElement) => {
     return answer.sent;
   }
 
+  function onKey(event: KeyboardEvent) {
+    if (event.target instanceof HTMLInputElement) return;
+    if (mergeDocs(stored.docs)?.is_open !== 1) return;
+    if (event.code === closeKey) return void close();
+    const slot = slotKeys.indexOf(event.code) + 1;
+    if (slot === 0) return;
+    void vote(slot, event.shiftKey ? -1 : 1);
+  }
+
   render();
+  if (board) document.addEventListener("keydown", onKey);
   keepSynced(resync);
   keepListening(id, resync);
 };
