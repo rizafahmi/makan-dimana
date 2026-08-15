@@ -1,188 +1,170 @@
 # Progress
 
-One working session on `4-local-first`. A whole-branch code review ran and returned
-fifteen findings, none of which were fixed. Then the work turned to a new surface: a big
-screen board for driving a vote session from a projector, designed end to end and handed
-to an implementation agent that is still building it.
+Makan Dimana is a local-first Astro app where a group creates a vote session for food
+places, shares a link, collects votes, and reveals the winner when the session closes.
+Built as a teaching artifact across four numbered branches, each demonstrating one
+architectural change from cloud-first to local-first.
 
-## The code review
+## Branch 1: Naive server-rendered (1-naive)
 
-A background `/code-review` at `xhigh` effort, scoped to `git diff main...HEAD` - 74
-files and roughly 10k added lines, since no upstream is configured. Fifteen findings.
-Three of them were confirmed by executing the real modules rather than by reading them,
-which is the only reason to trust those three more than the rest.
+Server-rendered Astro with forms and redirects, zero client JavaScript. 47 commits.
 
-**`mergeDocs` throws on a document with no counters.** `src/lib/merge.ts` dereferences
-`doc.up` and `doc.down` without checking either exists. `parseDoc` accepts such a
-document, so a relayed one that lacks the counters is a `TypeError` during render, on
-every device that pulls it. The rejection is unhandled, so nothing schedules a retry, and
-after a reload the session page stays blank.
+**What shipped:**
 
-**A missing title is read as a title claim.** The creator test in `src/lib/merge.ts` is
-`doc.title !== null`, so a document with no `title` key at all - undefined, not null -
-becomes the session's identity claim. A session this device does not hold then renders as
-present with an empty heading, instead of `Sesi tidak ditemukan`.
+- SQLite database with `vote_sessions` table, `node:sqlite` driver
+- Session creation at `/new` with 2-4 place names, 7-character Crockford Base32 ids
+- Voting at `/s/[id]` with upvote/downvote, clamped at zero
+- Close and reopen sessions, winner highlighting on close
+- Public landing list at `/` ordered by `created_at` descending, capped at 20
+- Indonesian relative time (`baru saja`, `N jam lalu`, `kemarin`)
+- Session id normalization: lowercase, `i`/`l` to `1`, `o` to `0`
+- QR code and share URL on session pages
+- Custom Indonesian 404 and 500 pages
+- Form validation with 422 re-render preserving submitted values
 
-**Retry chains overlap.** `retrying()` in `src/scripts/sync.ts` cancels the pending timer
-on a trigger but not an in-flight `run()`, and `attempt` and `timer` are shared state.
-Concurrent triggers spawn overlapping chains that cannot all be cancelled.
+**Key decisions documented in PLAN.md:**
 
-The rest, in short:
+- No authentication, ownership, or authorization - anyone can vote or close
+- Form POST mutations with 303 redirects, no `/api` routes
+- Vote spam unguarded by design
+- Empty optional slots stored as NULL, never empty string
+- Sessions retained indefinitely, no expiration or pagination
 
-- `exchange()` never checks `pulled.ok`, so a JSON error body is parsed as the document
-  array.
-- Two tabs on one device share a device id and silently overwrite each other's votes.
-  Two browsers are two devices; two tabs are not, and the store does not know that.
-- The landing sync rewrites every stored session and repaints on every trigger, ignoring
-  the `applyPulled` "did anything change" helper it already has.
-- `relativeTime` renders `NaN hari lalu` when `created_at` is null.
-- `tallyView`'s share is unclamped, so a negative tally pushes another place past 100%.
-- The unsubscribe closure in `src/lib/relay.ts` can drop a newer room and silence live
-  subscribers.
-- `AGENTS.md` and `docs/plan-v3.md` still describe `putDoc` as a blind
-  `INSERT OR REPLACE`. It is a compare-and-set now, and its boolean is what drives the
-  publish.
+## Branch 2: SSR with client fetch (2-ssr-csr)
 
-None of these were fixed. That is deliberate: the board work touches the client entry,
-the layout and the service worker, and a pile of unrelated fixes landing in the same
-uncommitted tree would make both harder to review. They are recorded here and left alone.
+Same app, but `/` and `/s/[id]` ship a shell and load data over the network. 18 commits
+on top of v1. Deliberately worse - adds a round trip to make the network dependency
+visible for the talk.
 
-## A big screen for the room
+**What shipped:**
 
-The ask was a page for presenting: a session on a projector, at display size. `docs/talk.md`
-already stages the moment - "the audience joins the vote on their own phones and the
-tallies move live" - but the only surface for it was the phone-sized `/s/[id]`.
+- JSON endpoints: `GET /api/sessions`, `GET /api/sessions/[id]`,
+  `POST /api/sessions/[id]`
+- Client entry `src/scripts/app.ts` with `createElement`/`textContent` rendering
+- Loading state (`Memuat...`) in server-rendered HTML
+- Error state with retry button (`Gagal memuat. Periksa koneksi.`)
+- Missing state (`Sesi tidak ditemukan`) for valid but unknown ids
+- Mutations via fetch with serialization and focus restoration
+- `AbortSignal.timeout` on every request
 
-The half-remembered design turned out to be the `Kantin Malam Design System` project in
-claude.ai/design, holding `ui_kits/kantin-malam/`: a click-through of `Landing.jsx`,
-`NewSession.jsx`, `Session.jsx` and `ErrorPages.jsx`, plus tokens, guideline cards and
-component specs. Those are the four routes that already exist. There is no big-screen
-surface in it, so the board is a fifth surface and it is new - but the tokens and the
-component vocabulary to build it from were already there.
+**Key decisions documented in docs/plan-v2.md:**
 
-Four questions settled it.
+- No service worker, no offline support (ADR 0001)
+- JavaScript required (ADR 0002)
+- Optimistic updates rejected - v2 is meant to feel like the network
+- One inlined script entry to avoid external chunks on throttled connections
 
-- **What is the big screen for?** A live room board for one session. A QR big enough to
-  scan from the back row, place names and tallies at display size moving as phones vote,
-  the winner revealed on close.
-- **Does the presenter drive anything from it?** Yes, fully. Vote and close from the
-  board; not a read-only display.
-- **How is it driven?** Both keyboard and click. A projector laptop is a keyboard at
-  arm's length, not a touchscreen.
-- **What happens on close?** Whatever `winnerView` already renders on the phone, only
-  larger. No board-specific reveal. That is the smallest-diff answer, and it is what
-  `docs/talk.md` asks for: optimise the diff, not the code.
+## Branch 3: Design system (3-improve-design)
 
-## Three approaches, one chosen
+v2's architecture with a design that survives a projector. 8 commits on top of v2.
+Nothing about where the data lives changes here.
 
-**A - new route, same mount, board layout expressed in tokens.** Chosen.
-`src/pages/s/[id]/board.astro` ships the same `[data-session]` shell, flagged
-`data-board`. `mountSession` renders it unchanged apart from a keyboard block gated on
-the flag. Everything visual is `.km-board` redefining custom properties that already
-exist - `--measure`, `--size-h1`, `--size-place`, `--size-vote`, `--qr-size` and the page
-padding - so every existing component scales without a new class or a second renderer.
-The board cannot drift from the phone, because it is the phone's renderer.
+**What shipped:**
 
-**B - new route, new `mountBoard`.** Its own DOM building, its own layout, its own tests.
-Two renderers of one data shape and a permanent divergence risk. Given that the reveal is
-just `winnerView` larger, it buys nothing.
+- Kantin Malam design system: one ground and one accent, self-hosted display type
+- Winner promoted onto a hero plate
+- Whole place row as the vote target
+- Vote feedback with row flash
+- Responsive layout for projector display
 
-**C - no new route, a `?board` query on `/s/[id]`.** Smallest diff of all, but then the
-URL on the projector is the URL you would hand a phone, and the service worker's navigate
-fallback cannot tell them apart. The ask was a new page, and this is not one.
+## Branch 4: Local-first (4-local-first)
 
-Astro's nested dynamic routing was confirmed against in-repo precedent rather than
-assumed: `src/pages/api/sessions/[id].ts` and `src/pages/api/sessions/[id]/events.ts`
-already coexist, so `/s/:id` and `/s/:id/board` will too.
+The data moves onto the device. IndexedDB is the source of truth, the server becomes an
+opaque relay, merging is a pure function on the client. 83 commits on top of v3.
 
-## The approved design
+**What shipped:**
 
-`src/pages/s/[id]/board.astro` is near-identical to `src/pages/s/[id].astro`: the same
-`normalizeSessionId` guard, the same 404 on a malformed id.
+### Core architecture
 
-**The QR and the share URL encode `/s/<id>`, the phone URL - not the board's own path.**
-Called out because it is the one thing here that fails silently. A board QR encoding the
-board sends the whole room to the projector view instead of the voting page, and nothing
-on screen says so.
+- IndexedDB local store with one document per session per device
+- Pure merge function in `src/lib/merge.ts`: `emptyDoc`, `creatorDoc`, `applyVote`,
+  `applyClose`, and `mergeDocs`
+- PN-counters for votes: `up` and `down` per slot, sparse partial records
+- Server as opaque relay: stores documents verbatim, never parses them
+- `session_docs` table replaces `vote_sessions`: `(session_id, device_id, doc)`
+- Client-side session creation with `crypto.getRandomValues`
+- Device id generation and persistence in IndexedDB
 
-No `Semua sesi` back link. Nav chrome does not belong on a projector.
+### Sync and convergence
 
-`src/layouts/Base.astro` grows one optional `board?: boolean` prop, rendering
-`class:list={["km-page", { "km-board": board }]}`. Checked before committing to it:
-nothing in the suite pins `<main class="km-page">`, so the change is additive.
+- Sync on load, `online`, `visibilitychange`, and server-sent events
+- Push-then-pull ordering so local changes propagate before pulling
+- Local write publishes immediately, not waiting for next sync
+- Retry schedule: 500ms doubling to 16s, bounded at six attempts
+- Per-element document parsing so one bad document cannot poison a session
+- Repaint only when pull lands something, preserving focus and flash
 
-Keyboard, gated on the board flag: `1` through `4` vote a slot up, `Shift`+`1` through
-`4` take that vote back, `t` closes. Inert on a closed session, and inert while typing in
-an input.
+### Event stream
 
-Two traps the keyboard has to dodge. Both are written down because they are the kind of
-thing a later reader will try to simplify back out.
+- `GET /api/sessions/[id]/events` with SSE
+- `ready` greeting, `changed` on document writes, keep-alive every 15s
+- Publish only when stored bytes differ from existing
+- Stream reconnection triggers sync
+- Fatal close (non-200) rebuilt on retry schedule
 
-1. Detection uses `event.code` - `Digit1`, `KeyT` - not `event.key`, because `Shift+1` is
-   `!` on a US layout and something else elsewhere.
-2. A number key means the **slot**, not the screen position. `listPlaces` sorts by votes
-   descending, so rows reorder live, and a positional key would move the target under the
-   presenter's fingers mid-talk. Each row therefore renders its slot number as a visible
-   key cap, which doubles as the on-screen legend and replaces the phone's `km-hint`
-   text.
+### Service worker
 
-`t` closes with no confirmation. Closing is permanent - `docs/adr/0004-closing-is-permanent.md`
-- but the on-screen `Tutup sesi` button is already one click from the same outcome, so
-the keyboard is not the new risk.
+- Hand-written `public/sw.js` with manual version constant
+- Precaches `/`, `/new`, `/s/0000000`, fonts
+- Cache-first for navigations, network on miss, generic session shell as fallback
+- `/api/**` never cached
+- Client validates shell's `data-id` against `location.pathname`
 
-`public/sw.js` needs a change. `generic = "/s/0000000"` is the navigate fallback for any
-uncached navigation, so offline a board reload would have served the *phone* shell. The
-fix is a board generic in the precached `shell` array, a fallback picked by path, and a
-bumped `version` constant.
+### Board surface (most recent work)
 
-Two of these were decided by judgment rather than asked about, and a reader should know
-they are open to challenge: number key means slot with a visible key cap, and `t` closes
-without a confirm.
+- `/s/[id]/board` route for projector display
+- Same renderer as phone, scaled via CSS custom properties
+- Keyboard controls: `1`-`4` vote slots, `Shift+1`-`4` cancel, `t` closes
+- `event.code` detection for layout-independent keys
+- Slot key caps as visible legends (slot, not position)
+- Board-specific service worker shell for offline
 
-## Test order
+**Key decisions documented in docs/plan-v3.md and ADRs:**
 
-One red at a time, no production code before it, and a test that passes on its first run
-is describing behavior that already exists and gets rewritten rather than kept. The
-planned sequence:
+- ADR 0003: Server is an opaque relay, never validates documents
+- ADR 0004: Closing is permanent, no reopen in v3
+- ADR 0005: Landing list is local, `GET /api/sessions` deleted
+- ADR 0006: Tallies can be negative (sum of up minus sum of down, unclamped)
+- ADR 0007: Browser automation (Playwright) for the offline claim
+- ADR 0008: Changes arrive over an event stream
 
-1. The route exists and ships a board-flagged shell. Fails 404 first, because `[id]`
-   matches a single path segment.
-2. The QR points at the phone URL.
-3. A malformed id 404s.
-4. Slot key caps render.
-5. `Digit1` votes slot 1.
-6. `Shift+Digit1` takes it back.
-7. `KeyT` closes.
-8. Keys inert on a closed session.
-9. Keys inert while typing.
-10. The layout is at display scale.
-11. An offline reload of `/s/<id>/board` serves the board shell, not the phone shell.
+## Known issues from code review
 
-Node suites go in `test/board.test.ts`, browser suites in `test/board.spec.ts`.
+A whole-branch review at `xhigh` effort returned fifteen findings. Three confirmed by
+execution, the rest by reading. None fixed yet - deferred to avoid mixing unrelated
+fixes with the board work.
 
-## The rule that was suspended
+**Confirmed by execution:**
 
-`CLAUDE.md` normally forbids the agent from touching a file at all - every edit is
-proposed in chat and typed by hand. For this task only, that was lifted: the agent
-implements the board from start to finish. The suspension is scoped to the board. The
-rest of `CLAUDE.md` stayed fully in force - strict TDD, no comments in source, vanilla
-CSS, no new dependencies, pnpm only, `createElement` and `textContent` and never
-`innerHTML`.
+1. `mergeDocs` throws on a document with no counters - `parseDoc` accepts it, but merge
+   dereferences `doc.up` and `doc.down`
+2. A missing title key (undefined, not null) is read as a title claim, so an unknown
+   session renders with an empty heading instead of missing
+3. Retry chains overlap - `retrying()` cancels the timer but not an in-flight `run()`,
+   and concurrent triggers spawn overlapping chains
 
-## Where things stand
+**Found by reading:**
 
-On `4-local-first`, HEAD at `721c93b`, and the working tree is not clean. An
-implementation agent is building the board now against the brief above, under the
-red-green loop, and is required to show a passing `pnpm test` before reporting done. The
-board is in flight, not finished, and whatever files exist in the tree at any given
-moment are a partial diff rather than the shape of the work. Nothing has been committed;
-it will land in the working tree for review.
+- `exchange()` never checks `pulled.ok`, so a JSON error body parses as documents
+- Two tabs share a device id and silently overwrite each other's votes
+- Landing sync rewrites every stored session ignoring the "did anything change" helper
+- `relativeTime` renders `NaN hari lalu` when `created_at` is null
+- `tallyView`'s share is unclamped, so a negative tally pushes another past 100%
+- The unsubscribe closure in `relay.ts` can drop a newer room
+- `CLAUDE.md` and `docs/plan-v3.md` describe `putDoc` as blind `INSERT OR REPLACE` but
+  it is now a compare-and-set
 
-Open, and none of it started:
+## Open work
 
-- The fifteen code-review findings, untouched. The three confirmed by execution are the
-  ones to take first.
-- No commit exists for any of this.
-- The Kantin Malam design-system project has no `Board.jsx` and no preview card for this
-  fifth surface. Deferred on purpose, not forgotten.
-- `AGENTS.md` and `docs/plan-v3.md` still contradict `src/lib/db.ts` about `putDoc`.
+- The fifteen code-review findings, untouched
+- `CLAUDE.md` and `docs/plan-v3.md` still contradict `src/lib/db.ts` about `putDoc`
+- The Kantin Malam design-system project has no `Board.jsx` preview card
+
+## Test infrastructure
+
+- `node --test` for unit and HTTP e2e suites (`test/*.test.ts`)
+- `@playwright/test` for browser suites (`test/*.spec.ts`), Chromium only
+- Unit suites import `src/lib/*.ts` directly (Node 24 strips types)
+- e2e suites spawn the built server with `MAKAN_DB` pointing at a temp database
+- Browser suites: two contexts are two devices, enabling convergence tests
+- `pnpm test` runs `astro check && astro build && node --test && playwright test`
