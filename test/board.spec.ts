@@ -136,3 +136,75 @@ test("the board's hint is the keyboard legend, not the phone's tap hint", async 
     "Pencet 1-4 buat vote. Shift+angka buat batalin. T buat tutup sesi.",
   );
 });
+
+const readType = () => {
+  const pick = (selector: string) => {
+    const node = document.querySelector(selector);
+    if (node === null) throw new Error(`missing ${selector}`);
+    return node;
+  };
+  const size = (selector: string) =>
+    parseFloat(getComputedStyle(pick(selector)).fontSize);
+  return {
+    width: pick("main").getBoundingClientRect().width,
+    qr: pick(".km-share-plate").getBoundingClientRect().width,
+    h1: size("h1.km-h1"),
+    name: size(".km-place-name"),
+    votes: size(".km-place-votes"),
+    key: size(".km-key"),
+  };
+};
+
+const fit = () => {
+  const doc = document.documentElement;
+  return {
+    sideways: doc.scrollWidth - doc.clientWidth,
+    down: doc.scrollHeight - doc.clientHeight,
+  };
+};
+
+test.describe("on a projector", () => {
+  test.use({ viewport: { width: 1920, height: 1080 } });
+
+  test("the board is at display scale and fits the screen whole", async ({
+    page,
+  }) => {
+    await holdRelay(page);
+    const link = await createSession(
+      page,
+      "Makan siang tim Kantin Malam bareng panitia konferensi",
+      [
+        "Warteg Bahari Pak Slamet",
+        "Nasi Padang Sederhana Minang",
+        "Sate Madura Pak Kumis",
+        "Bakmi Gajah Mada Legendaris",
+      ],
+    );
+
+    await page.goto(`${link}/board`);
+    await expect(caps(page)).toHaveCount(4);
+
+    const shown = await page.evaluate(readType);
+    expect(shown.width).toBeGreaterThan(1400);
+    expect(shown.qr).toBeGreaterThanOrEqual(320);
+    expect(shown.h1).toBeGreaterThanOrEqual(72);
+    expect(shown.name).toBeGreaterThanOrEqual(40);
+    expect(shown.votes).toBeGreaterThanOrEqual(56);
+    expect(shown.key).toBeGreaterThanOrEqual(28);
+
+    expect(await page.evaluate(fit)).toEqual({ sideways: 0, down: 0 });
+
+    await page.keyboard.press("Digit1");
+    await page.keyboard.press("KeyT");
+    await expect(page.getByText("Pemenang")).toBeVisible();
+
+    expect(await page.evaluate(fit)).toEqual({ sideways: 0, down: 0 });
+
+    await page.goto(link);
+    await expect(page.getByText("Pemenang")).toBeVisible();
+    const phone = await page.evaluate(() =>
+      parseFloat(getComputedStyle(document.querySelector("h1.km-h1")!).fontSize),
+    );
+    expect(phone).toBe(44);
+  });
+});

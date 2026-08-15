@@ -585,6 +585,54 @@ button.km-place[data-voted="true"] {
   align-items: flex-start;
 }
 
+.km-board {
+  --size-mono-fine: clamp(13px, 1.15vw, 26px);
+  --size-body: clamp(15px, 1.15vw, 26px);
+  --size-place: clamp(20px, 2.5vw, 54px);
+  --size-vote: clamp(28px, 3.4vw, 72px);
+  --size-h1: clamp(34px, 4vw, 88px);
+  --size-h1-phone: var(--size-h1);
+  --size-key: clamp(18px, 1.7vw, 38px);
+
+  --space-3: 16px;
+  --space-4: 24px;
+  --space-5: 32px;
+  --space-7: 40px;
+  --gap-row: 12px;
+
+  --measure: none;
+  --page-pad: 40px 56px 44px;
+  --qr-size: clamp(200px, 20vw, 440px);
+  --control-min-height: 64px;
+  --tap-vote: 64px;
+
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-7);
+}
+
+.km-board .km-share {
+  width: var(--qr-size);
+}
+
+.km-board .km-pct {
+  width: auto;
+  min-width: 4.5ch;
+}
+
+.km-board .km-key {
+  flex: none;
+  min-width: 1.7em;
+  padding: 0.12em 0.3em;
+  text-align: center;
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: var(--text-on-accent);
+  font: var(--weight-display) var(--size-key)/1.25 var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .km-button,
   button.km-place {
