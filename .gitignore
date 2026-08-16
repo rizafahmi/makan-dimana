@@ -28,3 +28,5 @@ pnpm-debug.log*
 
 # local database, created on first run
 data/
+
+.agent-shell/
