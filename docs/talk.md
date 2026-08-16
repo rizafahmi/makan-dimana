@@ -3,7 +3,9 @@
 This repo is a teaching artifact, not a product. Numbered branches walk an audience
 from a cloud-first web app to a local-first one, one architectural change at a time.
 
-- `main` - the untouched `create astro` scaffold. Nothing of the app lives here.
+- `0-scaffold` - a tag, not a branch. The untouched `create astro` scaffold every numbered branch descends from `main` used to point here.
+- `main` - fast-forwarded to `4-local-first`, so a visitor lands on the finished app.
+- It carries no commit of its own.
 - `1-naive` - v1. Server-rendered Astro, forms and redirects, zero client JavaScript.
   Built to work, documented by `PLAN.md`.
 - `2-ssr-csr` - v2, and the branch the talk actually opens with. Same app, same
