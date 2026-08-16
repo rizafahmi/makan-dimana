@@ -5,7 +5,7 @@ from a cloud-first web app to a local-first one, one architectural change at a t
 
 - `0-scaffold` - a tag, not a branch. The untouched `create astro` scaffold every numbered branch descends from. `main` used to point here.
 - `main` - fast-forwarded to `4-local-first`, so a visitor lands on the finished app.
-- It carries no commits of its own.
+   plus the repo's own upkeep - license, README, deployment config. A visitor lands on the finished app, and the numbered branches stay clean of anything that is not part of the squence.
 - `1-ssr` - v1. Server-rendered Astro, forms and redirects, zero client JavaScript.
   Built to work, documented by `PLAN.md`.
 - `2-ssr-csr` - v2, and the branch the talk actually opens with. Same app, same
