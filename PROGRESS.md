@@ -5,7 +5,7 @@ places, shares a link, collects votes, and reveals the winner when the session c
 Built as a teaching artifact across four numbered branches, each demonstrating one
 architectural change from cloud-first to local-first.
 
-## Branch 1: Naive server-rendered (1-naive)
+## Branch 1: Naive server-rendered (1-ssr)
 
 Server-rendered Astro with forms and redirects, zero client JavaScript. 47 commits.
 

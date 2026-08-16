@@ -3,10 +3,10 @@
 This repo is a teaching artifact, not a product. Numbered branches walk an audience
 from a cloud-first web app to a local-first one, one architectural change at a time.
 
-- `0-scaffold` - a tag, not a branch. The untouched `create astro` scaffold every numbered branch descends from `main` used to point here.
+- `0-scaffold` - a tag, not a branch. The untouched `create astro` scaffold every numbered branch descends from. `main` used to point here.
 - `main` - fast-forwarded to `4-local-first`, so a visitor lands on the finished app.
-- It carries no commit of its own.
-- `1-naive` - v1. Server-rendered Astro, forms and redirects, zero client JavaScript.
+- It carries no commits of its own.
+- `1-ssr` - v1. Server-rendered Astro, forms and redirects, zero client JavaScript.
   Built to work, documented by `PLAN.md`.
 - `2-ssr-csr` - v2, and the branch the talk actually opens with. Same app, same
   database, but `/` and `/s/[id]` ship a shell and load their data over the network
@@ -53,7 +53,7 @@ has something to be measured against.
 
 Which failure to stage depends on the branch.
 
-- `1-naive`, `2-ssr-csr` and `3-improve-design`: throttle the connection in DevTools
+- `1-ssr`, `2-ssr-csr` and `3-improve-design`: throttle the connection in DevTools
   rather than going offline. None of them has a service worker, so a dead connection
   produces the browser's own error page and none of the app's - see
   `docs/adr/0001-no-service-worker-in-v2.md`. On the two client-rendered branches the
