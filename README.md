@@ -98,3 +98,8 @@ pnpm is the package manager; `packageManager` in `package.json` pins the version
 ## Contributing
 
 `docs/plan-v3.md` holds the build order and the decisions behind the local-first version. `PLAN.md` and `docs/plan-v2.md` are the closed records of the two versions before it, and `docs/adr/` holds the decisions that outlive any one plan. `AGENTS.md` holds the rules coding agents must follow in this repo and is the authority when any of them disagree.
+
+
+## Deployment
+
+Running at <https://vote.rizafahmi.com> on one small VM, one SQLite file, no replication. The app keeps working on every device while it's down.
