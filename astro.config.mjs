@@ -7,6 +7,9 @@ export default defineConfig({
   output: "server",
   adapter: node({ mode: "standalone", bodySizeLimit: 16384 }),
   security: {
-    allowedDomains: [{ hostname: "**.ts.net", protocol: "https" }],
+    allowedDomains: [
+      { hostname: "**.ts.net", protocol: "https" },
+      { hostname: "vote.rizafahmi.com", protocol: "https" },
+    ],
   },
 });
