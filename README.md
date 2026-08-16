@@ -4,6 +4,26 @@ Gather food place ideas and vote on them as a group. One person creates a vote s
 
 It is local-first: every device keeps a complete copy of every session it knows and renders from that copy, so the app opens, votes and closes with the network gone. The server is a relay that carries copies between devices.
 
+There is no account system and no access control. Anyone holding a link can vote in
+that session and close it, so do not put anything private in one.
+
+## The branches
+
+This repo is a teaching artifact, not a product. Numbered branches walk from a
+cloud-first version of this app to the local-first one, one architectural change at a
+time, and tht branches is the unit the talk works in.
+
+| Branch | What it is |
+| :----- | :--------- |
+| `0-scaffold` | A tag, not a branch. The untouched `create astro` output the rest descend from |
+| `1-ssr` | Server-rendered Astro, forms and redirects, zero client JavaScript |
+| `2-ssr-csr` | The same app, but `/` and `/s/[id]` ship a shell and fetch their data |
+| `3-improvere with a design that survives a projector |
+| `4-local-first` | The data moves onto the device. `main` points here |
+
+`docs/talk.md` explains why each step exists, why v2 is deliberately worse than v1, and
+how to demo each one.
+
 ## Requirements
 
 Node >= 24.0.0, where both `node:sqlite` and TypeScript type stripping work without a flag. No database server: the app uses `node:sqlite` against a local file at `data/makan.db`, overridable with the `MAKAN_DB` environment variable. The file is gitignored and created on first run, so running the app needs no setup step beyond `pnpm install`.
@@ -33,18 +53,24 @@ Running the tests does. The browser suites drive a real Chromium through Playwri
 │   │   │   └── sessions/
 │   │   │       ├── [id].ts
 │   │   │       └── [id]/events.ts
+│   │   ├── 404.astro
+│   │   ├── 500.astro
 │   │   ├── index.astro
 │   │   ├── new.astro
-│   │   └── s/[id].astro
+│   │   └── s/
+│   │       ├── [id].astro
+│   │       └── [id]/board.astro
 │   ├── scripts/        # app.ts, idb.ts, sync.ts - the browser half
 │   └── styles/
 │       └── global.css
 ├── test/
 ├── AGENTS.md
+├── CONTEXT.md
+├── PROGRESS.md
 └── PLAN.md
 ```
 
-`/` lists the sessions this device created or opened, `/new` creates one, and `/s/[id]` is the share link where people vote and the winner appears. There is no list of everyone's sessions: a link is the only way in, and following one is what adds a session to your list.
+`/` lists the sessions this device created or opened, `/new` creates one, and `/s/[id]` is the share link where people vote and the winner appears, and the `s/[id]/board` is the same session scaled for a projector and driven from keyboard. There is no list of everyone's sessions: a link is the only way in, and following one is what adds a session to your list.
 
 Every page is rendered on demand by `@astrojs/node` and ships no session data. The data comes from IndexedDB in the browser, so nothing on screen is waiting on a request, and there is no UI framework. `/api/sessions/[id]` is an opaque relay: it stores one document per session per device, hands them all back on request, and never parses one. Combining them into a session is a pure function that runs on the client. `/api/sessions/[id]/events` holds a stream open and says when that session changed, without saying what changed - a device votes, publishes, and every other device open on that session pulls and repaints on its own.
 
