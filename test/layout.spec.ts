@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import { createSession, holdRelay } from "./browser.ts";
 
 test.use({ viewport: { width: 390, height: 844 } });
@@ -96,3 +96,30 @@ test("no page scrolls sideways at a phone viewport, whatever it holds", async ({
     "/new": 0,
   });
 });
+
+const box = async (locator: Locator) => {
+  const found = await locator.boundingBox();
+  if (found === null) throw new Error("no box");
+  return found;
+};
+
+test("the cancel control sits beside its row, not under it", async ({
+  page,
+}) => {
+  await holdRelay(page);
+  await createSession(page, "Makan malam tim");
+
+  const row = await box(
+    page.locator("button.km-place", { hasText: "Warteg Bahari" }),
+  );
+  const undo = await box(
+    page.getByRole("button", { name: "Batalin vote Warteg Bahari" }),
+  );
+
+  expect(undo.x).toBeGreaterThanOrEqual(row.x + row.width - 1);
+  expect(undo.y).toBeLessThan(row.y + row.height);
+  expect(row.y).toBeLessThan(undo.y + undo.height);
+  expect(undo.width).toBeGreaterThanOrEqual(44);
+  expect(undo.height).toBeGreaterThanOrEqual(44);
+});
+

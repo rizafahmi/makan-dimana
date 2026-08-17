@@ -111,7 +111,7 @@ test("Shift+click cancels a vote instead of stacking another", async ({
   await expect(warteg()).toHaveAttribute("data-votes", "0");
 });
 
-test("holding a row cancels a vote, and letting go does not add one back", async ({
+test("a long press on a row is just a slow vote, not a cancel", async ({
   page,
 }) => {
   await holdRelay(page);
@@ -126,6 +126,27 @@ test("holding a row cancels a vote, and letting go does not add one back", async
   await page.mouse.down();
   await page.waitForTimeout(700);
   await page.mouse.up();
+
+  await expect(warteg()).toHaveAttribute("data-votes", "2");
+});
+
+test("a row offers a way to take a vote back without a gesture", async ({
+  page,
+}) => {
+  await holdRelay(page);
+  await createSession(page, "Makan malam tim");
+  const warteg = () =>
+    page.locator("button.km-place", { hasText: "Warteg Bahari" });
+
+  await warteg().click();
+  await expect(warteg()).toHaveAttribute("data-votes", "1");
+
+  const undo = page.getByRole("button", {
+    name: "Batalin vote Warteg Bahari",
+  });
+  await expect(undo).toHaveText("Batalin");
+
+  await undo.click();
 
   await expect(warteg()).toHaveAttribute("data-votes", "0");
 });

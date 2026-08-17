@@ -116,7 +116,8 @@ p {
   .km-input,
   .km-row a,
   .km-back,
-  button.km-place
+  button.km-place,
+  .km-undo
 ):focus-visible {
   outline: var(--focus-outline);
   outline-offset: var(--focus-offset);
@@ -534,6 +535,35 @@ button.km-place[data-voted="true"] {
   animation: km-voted 1s cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
+.km-vote {
+  display: flex;
+  align-items: stretch;
+  gap: var(--gap-row);
+}
+
+.km-vote button.km-place {
+  flex: 1;
+  min-width: 0;
+}
+
+.km-undo {
+  flex: none;
+  min-width: var(--tap-vote);
+  min-height: var(--tap-vote);
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--bg-row);
+  color: var(--muted);
+  font: var(--weight-body) var(--size-mono-fine)/1 var(--font-mono);
+  cursor: pointer;
+  transition: background 120ms linear;
+}
+
+.km-undo:hover {
+  background: var(--surface);
+}
+
 .km-hint {
   font: var(--weight-body) var(--size-mono-fine)/1.4 var(--font-mono);
   color: var(--faint);
@@ -647,3 +677,4 @@ button.km-place[data-voted="true"] {
     transition: none;
   }
 }
+

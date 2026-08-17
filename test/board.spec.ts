@@ -127,7 +127,7 @@ test("the board's hint is the keyboard legend, not the phone's tap hint", async 
   const link = await createSession(page, "Makan siang panitia");
 
   await expect(page.locator(".km-hint")).toHaveText(
-    "Ketuk baris buat vote. Tahan atau Shift+klik buat batalin.",
+    "Ketuk baris buat vote.",
   );
 
   await page.goto(`${link}/board`);

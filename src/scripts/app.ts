@@ -28,10 +28,9 @@ import {
 
 type Session = NonNullable<ReturnType<typeof mergeDocs>>;
 
-const holdDelay = 500;
 const slotKeys = ["Digit1", "Digit2", "Digit3", "Digit4"];
 const closeKey = "KeyT";
-const hintText = "Ketuk baris buat vote. Tahan atau Shift+klik buat batalin.";
+const hintText = "Ketuk baris buat vote.";
 const legendText =
   "Pencet 1-4 buat vote. Shift+angka buat batalin. T buat tutup sesi.";
 const missingText = "Sesi tidak ditemukan";
@@ -89,35 +88,11 @@ const mountSession = async (root: HTMLElement) => {
   let stored = first ?? { id, docs: [] };
   if (first === undefined) await writeSession(stored);
   let voted: string | null = null;
-  let held = false;
-  let timer = 0;
-
-  const stopHold = () => {
-    if (timer !== 0) clearTimeout(timer);
-    timer = 0;
-  };
 
   function placeRow(slot: string) {
     const node = el("button");
     node.dataset.place = slot;
-
-    node.addEventListener("pointerdown", () => {
-      held = false;
-      stopHold();
-      timer = window.setTimeout(() => {
-        held = true;
-        void vote(Number(slot), -1);
-      }, holdDelay);
-    });
-    for (const name of ["pointerup", "pointerleave", "pointercancel"]) {
-      node.addEventListener(name, stopHold);
-    }
     node.addEventListener("click", (event) => {
-      stopHold();
-      if (held) {
-        held = false;
-        return;
-      }
       void vote(Number(slot), event.shiftKey ? -1 : 1);
     });
     return node;
@@ -134,17 +109,19 @@ const mountSession = async (root: HTMLElement) => {
     root.querySelector<HTMLElement>(`button[data-place="${place}"]`)?.focus();
   }
 
+  const rows = () => root.querySelectorAll<HTMLElement>("[data-place]");
+
   function rowTops() {
     const tops = new Map<string, number>();
-    const rows = () => root.querySelectorAll<HTMLElement>("[data-place]");
     for (const node of rows()) {
       const slot = node.dataset.place;
       if (slot !== undefined) tops.set(slot, node.getBoundingClientRect().top);
     }
     return tops;
   }
+
   function slide(before: Map<string, number>) {
-    for (const node of root.querySelectorAll<HTMLElement>("[data-place]")) {
+    for (const node of rows()) {
       const slot = node.dataset.place;
       const was = slot === undefined ? undefined : before.get(slot);
       if (was === undefined) continue;
@@ -157,6 +134,7 @@ const mountSession = async (root: HTMLElement) => {
       node.style.transform = "";
     }
   }
+
   function draw(session: Session) {
     clear(root);
     root.dataset.state = "ready";
@@ -259,7 +237,13 @@ const mountSession = async (root: HTMLElement) => {
       unit.className = "km-sr";
       row.append(votes, unit);
 
-      if (row !== item) item.append(row);
+      if (row !== item) {
+        item.className = "km-vote";
+        const undo = button("Batalin", () => void vote(Number(slot), -1));
+        undo.className = "km-undo";
+        undo.setAttribute("aria-label", `Batalin vote ${place.name}`);
+        item.append(row, undo);
+      }
       list.append(item);
     }
     if (others.length > 0) root.append(list);
