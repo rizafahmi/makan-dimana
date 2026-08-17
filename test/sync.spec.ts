@@ -702,3 +702,36 @@ test("triggers arriving while a sync is in flight collapse into one more", async
 
   expect(posts.length).toBeLessThanOrEqual(2);
 });
+
+test("a reset survives votes cast on a device that could not see it", async ({
+  browser,
+}) => {
+  const first = await browser.newContext();
+  const second = await browser.newContext();
+  const a = await first.newPage();
+  const b = await second.newPage();
+
+  const link = await afterSync(a, () => createSession(a, "Makan ulang tim"));
+  await afterSync(b, () => b.goto(link));
+
+  await second.setOffline(true);
+  await warteg(b).click();
+  await warteg(b).click();
+  await expect(warteg(b)).toHaveAttribute("data-votes", "2");
+
+  await warteg(a).click();
+  await expect(warteg(a)).toHaveAttribute("data-votes", "1");
+  for (let tap = 0; tap < 5; tap += 1) await a.locator(".km-id").click();
+  await a.getByRole("button", { name: "Reset vote" }).click();
+  await expect(warteg(a)).toHaveAttribute("data-votes", "0");
+  await afterSync(a, () => a.reload());
+
+  await afterSync(b, () => second.setOffline(false));
+
+  await expect(warteg(b)).toHaveAttribute("data-votes", "0");
+  await afterSync(a, () => a.reload());
+  await expect(warteg(a)).toHaveAttribute("data-votes", "0");
+
+  await first.close();
+  await second.close();
+});

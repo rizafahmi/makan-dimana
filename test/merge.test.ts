@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { emptyDoc, mergeDocs, votesCast } from "../src/lib/merge.ts";
+import {
+  applyReset,
+  emptyDoc,
+  mergeDocs,
+  votesCast,
+} from "../src/lib/merge.ts";
 
 test("a lone creator document becomes a session row", () => {
   const session = mergeDocs([
@@ -134,4 +139,45 @@ test("a device's own standing votes for a slot are its ups minus its downs", () 
   assert.equal(votesCast(doc, 1), 2);
   assert.equal(votesCast(doc, 2), 1);
   assert.equal(votesCast(doc, 3), 0);
+});
+
+test("a document from an older round contributes nothing to the tally", () => {
+  const session = mergeDocs([
+    {
+      device: "a3f1",
+      title: "Makan siang Jumat",
+      places: ["Warteg", "Padang"],
+      created_at: "2026-08-14 03:00:00",
+      closed: false,
+      round: 1,
+      up: { "1": 1 },
+      down: {},
+    },
+    {
+      device: "b7c2",
+      title: null,
+      places: null,
+      created_at: null,
+      closed: false,
+      round: 0,
+      up: { "1": 3, "2": 2 },
+      down: {},
+    },
+  ]);
+
+  assert.ok(session);
+  assert.equal(session.round, 1);
+  assert.equal(session.place1_votes, 1);
+  assert.equal(session.place2_votes, 0);
+});
+
+test("a reset moves a device to the round it is given, with nothing voted", () => {
+  const doc = { ...emptyDoc("a3f1"), up: { "1": 3 }, down: { "1": 1 } };
+
+  const next = applyReset(doc, 2);
+
+  assert.equal(next.device, "a3f1");
+  assert.equal(next.round, 2);
+  assert.deepEqual(next.up, {});
+  assert.deepEqual(next.down, {});
 });

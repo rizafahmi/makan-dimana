@@ -8,6 +8,7 @@ export type SessionDoc = {
   places: string[] | null;
   created_at: string | null;
   closed: boolean;
+  round?: number;
   up: Counters;
   down: Counters;
 };
@@ -18,6 +19,7 @@ export const emptyDoc = (device: string) => ({
   places: null,
   created_at: null,
   closed: false,
+  round: 0,
   up: {},
   down: {},
 });
@@ -47,6 +49,13 @@ export const votesCast = (doc: SessionDoc, slot: number) =>
 
 export const applyClose = (doc: SessionDoc) => ({ ...doc, closed: true });
 
+export const applyReset = (doc: SessionDoc, round: number) => ({
+  ...doc,
+  round,
+  up: {},
+  down: {},
+});
+
 export const parseDoc = (raw: string): SessionDoc | null => {
   try {
     const doc = JSON.parse(raw) as SessionDoc | null;
@@ -62,13 +71,16 @@ export const mergeDocs = (docs: SessionDoc[]) => {
   const creator = claimants.reduce((lowest, doc) =>
     doc.device < lowest.device ? doc : lowest,
   );
+  const round = Math.max(...docs.map((doc) => doc.round ?? 0));
+  const current = docs.filter((doc) => (doc.round ?? 0) === round);
   const tally = (slot: Slot) =>
-    docs.reduce(
+    current.reduce(
       (sum, doc) => sum + (doc.up[slot] ?? 0) - (doc.down[slot] ?? 0),
       0,
     );
   return {
     title: creator.title,
+    round,
     created_at: creator.created_at,
     is_open: docs.some((doc) => doc.closed) ? 0 : 1,
     place1_name: creator.places?.[0] ?? null,

@@ -276,6 +276,17 @@ p {
   border-color: var(--accent);
 }
 
+.km-button[data-variant="danger"] {
+  background: transparent;
+  color: var(--danger-text);
+  border-color: var(--hairline);
+}
+
+.km-button[data-variant="danger"]:hover {
+  background: var(--danger-wash);
+  border-color: var(--danger);
+}
+
 .km-button[data-block="true"] {
   width: 100%;
 }
@@ -431,7 +442,7 @@ p {
 
 .km-shead {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: var(--gap-inline);
 }
@@ -449,8 +460,16 @@ p {
 }
 
 .km-id {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 44px;
+  min-height: 44px;
+  margin: -16px 0;
   font: var(--weight-body) var(--size-mono-fine)/1 var(--font-mono);
   color: var(--faint);
+  cursor: pointer;
+  user-select: none;
 }
 
 .km-tally {

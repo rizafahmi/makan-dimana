@@ -172,6 +172,46 @@ test("a place this device has not voted for offers nothing to take back", async 
   await expect(undo("Warteg Bahari")).toHaveCount(0);
 });
 
+test("five taps on the session id reveal a reset, and four do not", async ({
+  page,
+}) => {
+  await holdRelay(page);
+  await createSession(page, "Makan malam tim");
+  const reset = page.getByRole("button", { name: "Reset vote" });
+  const id = page.locator(".km-id");
+
+  await expect(reset).toHaveCount(0);
+
+  for (let tap = 0; tap < 4; tap += 1) await id.click();
+  await expect(reset).toHaveCount(0);
+
+  await id.click();
+
+  await expect(reset).toHaveCount(1);
+});
+
+test("a reset takes every tally back to zero", async ({ page }) => {
+  await holdRelay(page);
+  await createSession(page, "Makan malam tim");
+  const warteg = () =>
+    page.locator("button.km-place", { hasText: "Warteg Bahari" });
+  const padang = () =>
+    page.locator("button.km-place", { hasText: "Nasi Padang" });
+  const id = page.locator(".km-id");
+
+  await warteg().click();
+  await padang().click();
+  await padang().click();
+  await expect(padang()).toHaveAttribute("data-votes", "2");
+
+  for (let tap = 0; tap < 5; tap += 1) await id.click();
+  await page.getByRole("button", { name: "Reset vote" }).click();
+
+  await expect(warteg()).toHaveAttribute("data-votes", "0");
+  await expect(padang()).toHaveAttribute("data-votes", "0");
+  await expect(page.getByText("0 suara masuk \u00b7 2 tempat")).toBeVisible();
+});
+
 test("closing is one-way: it survives a reload and offers no way back", async ({
   page,
 }) => {

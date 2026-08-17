@@ -2,6 +2,7 @@ import { coalescing } from "../lib/coalesce.ts";
 import { generateSessionId, normalizeSessionId } from "../lib/id.ts";
 import {
   applyClose,
+  applyReset,
   applyVote,
   creatorDoc,
   mergeDocs,
@@ -31,6 +32,7 @@ type Session = NonNullable<ReturnType<typeof mergeDocs>>;
 
 const slotKeys = ["Digit1", "Digit2", "Digit3", "Digit4"];
 const closeKey = "KeyT";
+const tapsToReveal = 5;
 const hintText = "Ketuk baris buat vote.";
 const legendText =
   "Pencet 1-4 buat vote. Shift+angka buat batalin. T buat tutup sesi.";
@@ -91,6 +93,8 @@ const mountSession = async (root: HTMLElement) => {
   let stored = first ?? { id, docs: [] };
   if (first === undefined) await writeSession(stored);
   let voted: string | null = null;
+  let taps = 0;
+  let revealed = false;
 
   function placeRow(slot: string) {
     const node = el("button");
@@ -157,6 +161,12 @@ const mountSession = async (root: HTMLElement) => {
     state.dataset.open = open;
     const sid = el("span", id);
     sid.className = "km-id";
+    sid.addEventListener("click", () => {
+      taps += 1;
+      if (taps < tapsToReveal) return;
+      revealed = true;
+      render();
+    });
     head.append(state, sid);
 
     const heading = el("h1", title);
@@ -276,6 +286,13 @@ const mountSession = async (root: HTMLElement) => {
       toggle.className = "km-button";
       toggle.dataset.variant = "outline";
       actions.append(toggle);
+
+      if (revealed) {
+        const wipe = button("Reset vote", () => void reset(session.round + 1));
+        wipe.className = "km-button";
+        wipe.dataset.variant = "danger";
+        actions.append(wipe);
+      }
       root.append(actions);
     }
     voted = null;
@@ -316,6 +333,12 @@ const mountSession = async (root: HTMLElement) => {
     await change(applyClose);
     render();
   }
+
+  async function reset(round: number) {
+    await change((doc) => applyReset(doc, round));
+    render();
+  }
+
 
   async function sync() {
     const answer = await exchange(id, device, ownDoc(stored.docs, device));

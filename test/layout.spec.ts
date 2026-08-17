@@ -138,3 +138,15 @@ test("the repository link lines up with the page, not the viewport edge", async 
 
   expect(Math.abs(link.x - heading.x)).toBeLessThanOrEqual(1);
 });
+
+test("the session id is a thumb-sized target, not a 13px sliver", async ({
+  page,
+}) => {
+  await holdRelay(page);
+  await createSession(page, "Makan malam tim");
+
+  const id = await box(page.locator(".km-id"));
+
+  expect(id.height).toBeGreaterThanOrEqual(44);
+  expect(id.width).toBeGreaterThanOrEqual(44);
+});
