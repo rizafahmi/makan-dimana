@@ -127,3 +127,14 @@ test("the cancel control sits beside its row, not under it", async ({
   expect(undo.height).toBeGreaterThanOrEqual(44);
 });
 
+
+test("the repository link lines up with the page, not the viewport edge", async ({
+  page,
+}) => {
+  await page.goto("/");
+
+  const heading = await box(page.getByRole("heading", { level: 1 }));
+  const link = await box(page.locator(".km-foot a"));
+
+  expect(Math.abs(link.x - heading.x)).toBeLessThanOrEqual(1);
+});

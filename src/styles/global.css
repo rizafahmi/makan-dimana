@@ -115,6 +115,7 @@ p {
   .km-button,
   .km-input,
   .km-row a,
+  .km-foot a,
   .km-back,
   button.km-place,
   .km-undo
@@ -135,6 +136,57 @@ p {
 @media (min-width: 40rem) {
   .km-page {
     padding: var(--page-pad);
+  }
+}
+
+.km-foot {
+  max-width: var(--measure);
+  margin: 0 auto;
+  padding: var(--page-pad-phone);
+  padding-top: 0;
+  font: var(--weight-body) var(--size-mono-fine)/1.4 var(--font-mono);
+}
+
+.km-foot a {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--faint);
+  text-decoration: none;
+}
+
+.km-foot a:hover {
+  color: var(--text);
+}
+
+.km-foot a:hover .km-foot-repo {
+  text-decoration: underline;
+}
+
+.km-mark {
+  width: 1em;
+  height: 1em;
+  flex: none;
+  fill: currentColor;
+}
+
+.km-foot-label {
+  color: inherit;
+}
+
+.km-foot-sep {
+  opacity: 0.5;
+}
+
+.km-foot-repo {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+@media (min-width: 40rem) {
+  .km-foot {
+    padding: var(--page-pad);
+    padding-top: 0;
   }
 }
 

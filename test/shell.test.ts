@@ -102,3 +102,14 @@ test("the create and session pages link back to the session list", async () => {
     );
   }
 });
+
+test("every route carries the link to the repository it was built from", async () => {
+  const path = await seedSession(server.origin);
+  const repo =
+    /<a href="https:\/\/github\.com\/rizafahmi\/makan-dimana"[\s\S]*?Kode sumber[\s\S]*?<\/a>/;
+
+  for (const route of ["/", "/new", path, "/s/zzzzzzz"]) {
+    const html = await (await fetch(`${server.origin}${route}`)).text();
+    assert.match(html, repo, `route ${route} carries no link`);
+  }
+});
