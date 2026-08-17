@@ -144,15 +144,22 @@ carries `title`, `places` and `created_at`; on every other document they are nul
 - places: string[] | null, 2-4 trimmed non-empty names
 - created_at: string | null, `datetime('now')` format, UTC
 - closed: boolean
+- deleted?: boolean
+- round?: number
 - up: Partial<Record<'1'|'2'|'3'|'4', number>>
 - down: Partial<Record<'1'|'2'|'3'|'4', number>>
+
+`deleted` and `round` are optional because documents minted before those decisions
+carry neither, and one of them may arrive over the relay from a device still running
+older code. The merge reads a missing flag as `false` and a missing round as `0`, so
+an older copy still merges rather than being discarded. `emptyDoc` writes both.
 
 Both counters are sparse. A slot a device never touched carries no key at all, and a
 missing key reads as zero, so a device that voted for one place holds one entry rather
 than three zeros. `Partial` is what makes the empty `{}` on a fresh document assignable
 under `astro/tsconfigs/strict`.
 
-`src/lib/merge.ts` owns the whole document vocabulary: the shape, the four transforms
+`src/lib/merge.ts` owns the whole document vocabulary: the shape, the six transforms
 that produce a device's next document, and the merge that reads a pile of them. Every
 transform returns a new document rather than editing the one it was given, because the
 store hands the same object to the renderer.
@@ -168,6 +175,17 @@ store hands the same object to the renderer.
 - `applyClose(doc)` sets `closed`. There is deliberately no `applyReopen`: closing is
   one-way, so the merge can OR the flags and needs no clocks - see
   `docs/adr/0004-closing-is-permanent.md`
+- `applyReset(doc, round)` moves this device to the round it is given and empties both
+  counters. It takes the round instead of reading one off the merge, the way
+  `creatorDoc` takes its timestamp, so it stays pure. Nothing is subtracted; the old
+  votes simply stop standing at the current round - see
+  `docs/adr/0009-a-reset-starts-a-new-round.md`
+- `applyDelete(doc)` sets `deleted`. One-way like closing, and for the same reason -
+  see `docs/adr/0010-deleting-is-a-tombstone.md`
+
+`votesCast(doc, slot)` is the one reader here rather than a transform: a device's own
+ups minus its own downs for one slot. The client shows a place's cancel control only
+where that is above zero, so a place you never voted for offers nothing to take back.
 
 The transforms trust their inputs. `validateCreate` is what rejects an empty title or a
 one-place session and it runs in the browser before `creatorDoc` is reached, so nothing
@@ -185,8 +203,14 @@ here re-checks; a slot that no place occupies is a counter no view reads.
   with a null title and no places. A device can hold vote documents for a session
   whose creator document has not reached it yet, and an empty document set is the
   same case; both are `data-state="missing"`. Callers must narrow the return
+- A pile containing any deleted document merges to null, so a deleted session reads
+  exactly like one this device never held. `missing` covers both cases and the UI does
+  not distinguish them
 - `is_open` is 0 when any document has `closed` true
-- Each slot's tally is the sum of every `up` minus the sum of every `down`, unclamped
+- `round` is the highest any document claims, and only the documents standing at it are
+  tallied. A document from an earlier round contributes nothing
+- Each slot's tally is the sum of every `up` minus the sum of every `down` at the
+  current round, unclamped
 
 ## HTTP behavior
 

@@ -82,13 +82,15 @@ session_docs:
 - updated_at, `datetime('now')`, UTC, written and never read. It is there for a human looking at the file
 - PRIMARY KEY (session_id, device_id)
 
-A document is the client's shape, not the database's, and `src/lib/merge.ts` owns it: `device`, `title`, `places`, `created_at`, `closed`, and the sparse `up` and `down` PN counters keyed by slot. Only the creator's document carries a title, places and a `created_at`; on every other document all three are null.
+A document is the client's shape, not the database's, and `src/lib/merge.ts` owns it: `device`, `title`, `places`, `created_at`, `closed`, `deleted`, `round`, and the sparse `up` and `down` PN counters keyed by slot. Only the creator's document carries a title, places and a `created_at`; on every other document all three are null. `deleted` and `round` are optional: documents minted before those decisions carry neither, so the merge reads them as `false` and `0` rather than discarding an older device's copy.
 
-`mergeDocs` folds a pile of documents into the row shape the views read - `title`, `is_open`, `place1_name` through `place4_name` with unused slots null, `place1_votes` through `place4_votes`, and `created_at` - or null when no document claims a title, which is how a session this device does not hold reads as missing. Identity comes from the document with a title, and the lower device id wins a tie.
+`mergeDocs` folds a pile of documents into the row shape the views read - `title`, `is_open`, `round`, `place1_name` through `place4_name` with unused slots null, `place1_votes` through `place4_votes`, and `created_at` - or null when no document claims a title, which is how a session this device does not hold reads as missing. It returns null for a deleted session too, so `missing` covers both. Identity comes from the document with a title, and the lower device id wins a tie.
 
 An unused optional place slot is null, never `''`. `validateCreate` drops empty place names before `creatorDoc` is reached, and every guard that skips a slot, blocks voting on it or excludes it from the winner tests for null.
 
-A tally is the sum of every `up` minus every `down`, unclamped and possibly negative - see `docs/adr/0006-tallies-can-be-negative.md`. `closed` is monotonic: any document closing a session closes it everywhere, forever, and there is no reopen - see `docs/adr/0004-closing-is-permanent.md`.
+A tally is the sum of every `up` minus every `down` across the documents standing at the highest `round`, unclamped and possibly negative - see `docs/adr/0006-tallies-can-be-negative.md`. Documents at a lower round contribute nothing, which is what makes a reset survive votes it never saw - see `docs/adr/0009-a-reset-starts-a-new-round.md`.
+
+Three flags are monotonic and merge without a clock. `closed` ORs: any document closing a session closes it everywhere, forever, and there is no reopen - see `docs/adr/0004-closing-is-permanent.md`. `deleted` ORs the same way and there is no undelete - see `docs/adr/0010-deleting-is-a-tombstone.md`. `round` takes the maximum, so a reset can only move forward.
 
 `created_at` is UTC in `datetime('now')` shape and is rendered on the landing list as Indonesian relative time. Relative time is the difference between two UTC instants, so no timezone conversion exists anywhere in the app.
 
@@ -99,9 +101,9 @@ A tally is the sum of every `up` minus every `down`, unclamped and possibly nega
 * `docs/plan-v3.md` - this branch: what local-first means here, the document shape, the merge, HTTP behavior, the build order and the conventions the client follows. Read the relevant step before implementing anything.
 * `PLAN.md` and `docs/plan-v2.md` - the closed v1 and v2 records. Accurate about what they built; v3 contradicts a few of their decisions and says which ones.
 * `docs/talk.md` - why this repo exists and what each branch is for. Read it before proposing an improvement to a baseline.
-* `docs/adr/` - eight decisions a reader will otherwise try to "fix", including the opaque relay, permanent closing, the local landing list, negative tallies and the event stream. `0001` and `0002` are about v2 and are superseded here, not wrong.
+* `docs/adr/` - ten decisions a reader will otherwise try to "fix", including the opaque relay, permanent closing, the local landing list, negative tallies, the event stream, rounds behind reset and the delete tombstone. `0001` and `0002` are about v2 and are superseded here, not wrong.
 * `CONTEXT.md` - the domain language. Use these words in code, copy and tests.
-* `src/lib/merge.ts` - the document shape, the four transforms that produce a device's next document, and the merge that reads a pile of them. Authoritative for what a document is.
+* `src/lib/merge.ts` - the document shape, the six transforms that produce a device's next document, and the merge that reads a pile of them. Authoritative for what a document is.
 * `src/lib/store.ts` - the pure half of the local store: replace or append a device's document, hand a device its own, build the local list, and decide what a pull changed.
 * `src/lib/db.ts` - the relay's one table and its two statements. Authoritative for the schema; keep it and the data model above in sync.
 * `src/lib/relay.ts` - the in-memory registry of who is listening to which session. It carries no payload and never sees a document; a publish says only that a session was written.
