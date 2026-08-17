@@ -35,7 +35,7 @@ test("a session created on this device renders from the local store", async ({
   ).toBeVisible();
   await expect(page.getByText("Warteg Bahari")).toBeVisible();
   await expect(page.getByText("Nasi Padang")).toBeVisible();
-  await expect(page.getByText("Masih buka")).toBeVisible();
+  await expect(page.locator(".km-state")).toHaveText("Sesi masih buka");
 });
 
 test("a vote survives a reload with the relay refusing every request", async ({

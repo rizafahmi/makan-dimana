@@ -1,7 +1,7 @@
 # NOTES
 
 ## 2026-07-17 10:34
-- [ ] Wording "MASIH BUKA" is ambigous. Between the vote still open, or places still open.
+- [x] Wording "MASIH BUKA" is ambigous. Between the vote still open, or places still open.
 
 ## 2026-07-17 10:10
 - [x] The tap and hold is not good ux on mobile. It's sometime select the text. We need to find another way

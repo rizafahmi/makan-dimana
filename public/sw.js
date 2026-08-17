@@ -1,4 +1,4 @@
-const version = "makan-shell-v9";
+const version = "makan-shell-v10";
 
 const generic = "/s/0000000";
 const genericBoard = `${generic}/board`;

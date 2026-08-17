@@ -53,9 +53,9 @@ test("a session closed on its own page is listed as closed, an untouched one as 
   const closed = row(page, "Makan siang tim");
   const open = row(page, "Makan malam tim");
   await expect(closed).toHaveAttribute("data-open", "0");
-  await expect(closed.locator(".km-row-state")).toHaveText("Sudah ditutup");
+  await expect(closed.locator(".km-row-state")).toHaveText("Sesi sudah ditutup");
   await expect(open).toHaveAttribute("data-open", "1");
-  await expect(open.locator(".km-row-state")).toHaveText("Masih buka");
+  await expect(open.locator(".km-row-state")).toHaveText("Sesi masih buka");
 });
 
 test("the list renders with every data request refused, and says nothing about it", async ({

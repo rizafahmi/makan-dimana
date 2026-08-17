@@ -34,6 +34,8 @@ const closeKey = "KeyT";
 const hintText = "Ketuk baris buat vote.";
 const legendText =
   "Pencet 1-4 buat vote. Shift+angka buat batalin. T buat tutup sesi.";
+const openText = "Sesi masih buka";
+const closedText = "Sesi sudah ditutup";
 const missingText = "Sesi tidak ditemukan";
 
 const el = (tag: string, text?: string) => {
@@ -150,7 +152,7 @@ const mountSession = async (root: HTMLElement) => {
 
     const head = el("div");
     head.className = "km-shead";
-    const state = el("span", isOpen ? "Masih buka" : "Sudah ditutup");
+    const state = el("span", isOpen ? openText : closedText);
     state.className = "km-state";
     state.dataset.open = open;
     const sid = el("span", id);
@@ -377,7 +379,7 @@ const mountLanding = async (root: HTMLElement) => {
 
       const state = el(
         "span",
-        session.is_open === 1 ? "Masih buka" : "Sudah ditutup",
+        session.is_open === 1 ? openText : closedText,
       );
       state.className = "km-row-state";
 
