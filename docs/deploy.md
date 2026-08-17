@@ -261,3 +261,26 @@ gcloud billing projects unlink makan-dimana-talk
 Nothing of value is lost by tearing this down. Every device holds a complete copy of
 every session it knows, so the sessions survive on the phones that voted in them, and
 the relay's SQLite file only ever held copies.
+
+## Measured capacity
+
+Eighty simulated devices casting two votes each over five minutes, run on the box
+itself - the shape of a talk, not a stress test. The load generator shared the same two
+vCPUs as the server, so these are a floor rather than a ceiling.
+
+| | before `coalesce.ts` | after |
+| :-- | --: | --: |
+| requests | 39,201 | 26,041 |
+| push p50 / p95 | 78ms / 13,532ms | 51ms / 108ms |
+| pull p50 / p95 | 90ms / 14,758ms | 71ms / 136ms |
+| failures | 274 | 0 |
+
+The tail was the problem, not the median. Every device's first push is a new row and so
+a real publish, which means eighty people opening the session at once produce eighty
+publishes and eighty exchanges each - roughly 12,800 requests in a few seconds. Before
+the in-flight guard those exchanges overlapped and queued, turning a 90ms pull into a
+fifteen-second one. Collapsing them removed the queue without removing any publishes:
+nudges per device held at 238 against 243 expected.
+
+The box was never the constraint. CPU peaked near 30% in every run, including the ones
+that failed a fifth of their requests.
