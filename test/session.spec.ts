@@ -230,7 +230,7 @@ test("a row that changes position slides there instead of jumping", async ({
   await expect(page.locator("body")).toHaveAttribute("data-slid", /^(12|21)$/);
 });
 
-test("a row hold ts old position for a beat before it slides", async ({
+test("a row hold its old position for a beat before it slides", async ({
   page,
 }) => {
   await holdRelay(page);
