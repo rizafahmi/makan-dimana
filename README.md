@@ -7,6 +7,8 @@ It is local-first: every device keeps a complete copy of every session it knows 
 There is no account system and no access control. Anyone holding a link can vote in
 that session and close it, so do not put anything private in one.
 
+Running at <https://vote.rizafahmi.com> on one small VM, one SQLite file, no replication. The app keeps working on every device while it's down.
+
 ## The branches
 
 This repo is a teaching artifact, not a product. Numbered branches walk from a
@@ -97,9 +99,6 @@ pnpm is the package manager; `packageManager` in `package.json` pins the version
 
 ## Contributing
 
-`docs/plan-v3.md` holds the build order and the decisions behind the local-first version. `PLAN.md` and `docs/plan-v2.md` are the closed records of the two versions before it, and `docs/adr/` holds the decisions that outlive any one plan. `AGENTS.md` holds the rules coding agents must follow in this repo and is the authority when any of them disagree.
+`docs/deploy.md` records the running deployment, its measured capacity, and how to remove it without leaving anything billing. `docs/plan-v3.md` holds the build order and the decisions behind the local-first version. `PLAN.md` and `docs/plan-v2.md` are the closed records of the two versions before it, and `docs/adr/` holds the decisions that outlive any one plan. `AGENTS.md` holds the rules coding agents must follow in this repo and is the authority when any of them disagree.
 
 
-## Deployment
-
-Running at <https://vote.rizafahmi.com> on one small VM, one SQLite file, no replication. The app keeps working on every device while it's down.
