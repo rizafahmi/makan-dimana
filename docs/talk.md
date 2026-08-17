@@ -68,6 +68,16 @@ One thing not to promise on stage: the QR is rendered by the server, so offline 
 share block shows the URL as text. That is by design - an offline QR cannot resolve a
 scan - but it is a surprise if you meant to scan one on camera.
 
+### When the tallies do not add up
+
+Two windows offline, one showing 12 votes and the other 11, converge to 14 rather than
+23, and someone will ask why. The counters are per device: each document carries only
+that device's own increments, and `mergeDocs` sums those - not the totals on the
+screens. Both screens already included the nine votes they had synced before going
+offline, so adding them counts those nine twice. Fourteen is nine plus the three and
+the two cast while apart. It is the question the demo invites, so have the answer
+ready rather than discovering it on stage.
+
 ### Serving it to a second device
 
 A phone reaching the laptop over LAN HTTP - `HOST=0.0.0.0 node dist/server/entry.mjs`
