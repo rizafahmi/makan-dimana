@@ -244,7 +244,7 @@ const mountSession = async (root: HTMLElement) => {
         item.className = "km-vote";
         item.dataset.place = slot;
         item.append(row);
-        if (votesCast(mine, place.slot) > 0) {
+        if (!board && votesCast(mine, place.slot) > 0) {
           const undo = button("Batalin", () => void vote(Number(slot), -1));
           undo.className = "km-undo";
           undo.setAttribute("aria-label", `Batalin vote ${place.name}`);

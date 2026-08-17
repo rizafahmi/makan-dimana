@@ -297,7 +297,7 @@ test("a row's cancel control travels with the row, not apart from it", async ({
   await expect(page.locator("body")).toHaveAttribute("data-moved", "LI");
 });
 
-test("a row hold its old position for a beat before it slides", async ({
+test("a row holds its old position for a beat before it slides", async ({
   page,
 }) => {
   await holdRelay(page);

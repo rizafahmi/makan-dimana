@@ -48,6 +48,20 @@ test("a number key votes its own slot up, and only on the board", async ({
   await expect(row(page, "Warteg Bahari")).toHaveAttribute("data-votes", "0");
 });
 
+test("the board keeps its cancel controls off the wall", async ({ page }) => {
+  await holdRelay(page);
+  const link = await createSession(page, "Makan sore tim");
+  const undo = page.getByRole("button", { name: "Batalin vote Warteg Bahari" });
+
+  await page.locator("button.km-place", { hasText: "Warteg Bahari" }).click();
+  await expect(undo).toHaveCount(1);
+
+  await page.goto(`${link}/board`);
+  await expect(row(page, "Warteg Bahari")).toHaveAttribute("data-votes", "1");
+
+  await expect(undo).toHaveCount(0);
+});
+
 test("Shift and a number key takes that slot's vote back", async ({ page }) => {
   await holdRelay(page);
   const link = await createSession(page, "Makan pagi tim");
