@@ -2,6 +2,7 @@ import { coalescing } from "../lib/coalesce.ts";
 import { generateSessionId, normalizeSessionId } from "../lib/id.ts";
 import {
   applyClose,
+  applyDelete,
   applyReset,
   applyVote,
   creatorDoc,
@@ -279,19 +280,25 @@ const mountSession = async (root: HTMLElement) => {
       root.append(tally);
     }
 
-    if (isOpen) {
+    if (isOpen || revealed) {
       const actions = el("div");
       actions.className = "km-actions";
-      const toggle = button("Tutup sesi", () => void close());
-      toggle.className = "km-button";
-      toggle.dataset.variant = "outline";
-      actions.append(toggle);
+
+      if (isOpen) {
+        const toggle = button("Tutup sesi", () => void close());
+        toggle.className = "km-button";
+        toggle.dataset.variant = "outline";
+        actions.append(toggle);
+      }
 
       if (revealed) {
         const wipe = button("Reset vote", () => void reset(session.round + 1));
         wipe.className = "km-button";
-        wipe.dataset.variant = "danger";
-        actions.append(wipe);
+        wipe.dataset.variant = "outline";
+        const drop = button("Hapus sesi", () => void remove());
+        drop.className = "km-button";
+        drop.dataset.variant = "danger";
+        actions.append(wipe, drop);
       }
       root.append(actions);
     }
@@ -337,6 +344,11 @@ const mountSession = async (root: HTMLElement) => {
   async function reset(round: number) {
     await change((doc) => applyReset(doc, round));
     render();
+  }
+
+  async function remove() {
+    await change(applyDelete);
+    location.assign("/");
   }
 
 

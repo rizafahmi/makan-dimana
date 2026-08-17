@@ -212,6 +212,29 @@ test("a reset takes every tally back to zero", async ({ page }) => {
   await expect(page.getByText("0 suara masuk \u00b7 2 tempat")).toBeVisible();
 });
 
+test("a closed session can be deleted from the hidden controls", async ({
+  page,
+}) => {
+  await holdRelay(page);
+  const link = await createSession(page, "Makan malam tim");
+  await page.getByRole("button", { name: "Tutup sesi" }).click();
+  await expect(page.getByText("Sesi sudah ditutup")).toBeVisible();
+
+  const id = page.locator(".km-id");
+  for (let tap = 0; tap < 5; tap += 1) await id.click();
+  await page.getByRole("button", { name: "Hapus sesi" }).click();
+
+  await expect(page).toHaveURL("/");
+  await expect(page.getByText("Belum ada sesi.")).toBeVisible();
+
+  await page.goto(link);
+
+  await expect(page.locator("[data-session]")).toHaveAttribute(
+    "data-state",
+    "missing",
+  );
+});
+
 test("closing is one-way: it survives a reload and offers no way back", async ({
   page,
 }) => {

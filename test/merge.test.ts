@@ -181,3 +181,20 @@ test("a reset moves a device to the round it is given, with nothing voted", () =
   assert.deepEqual(next.up, {});
   assert.deepEqual(next.down, {});
 });
+
+test("a session any document calls deleted reads as no session at all", () => {
+  const creator = {
+    device: "a3f1",
+    title: "Makan siang Jumat",
+    places: ["Warteg", "Padang"],
+    created_at: "2026-08-14 03:00:00",
+    closed: false,
+    deleted: false,
+    round: 0,
+    up: { "1": 2 },
+    down: {},
+  };
+
+  assert.ok(mergeDocs([creator]));
+  assert.equal(mergeDocs([creator, { ...emptyDoc("b7c2"), deleted: true }]), null);
+});

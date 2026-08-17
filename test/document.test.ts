@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   applyClose,
+  applyDelete,
   applyVote,
   creatorDoc,
   emptyDoc,
@@ -14,6 +15,7 @@ test("an empty document holds nothing but its device", () => {
     places: null,
     created_at: null,
     closed: false,
+    deleted: false,
     round: 0,
     up: {},
     down: {},
@@ -34,6 +36,7 @@ test("a creator document carries the session's identity", () => {
       places: ["Warteg", "Padang"],
       created_at: "2026-08-14 03:00:00",
       closed: false,
+      deleted: false,
       round: 0,
       up: {},
       down: {},
@@ -50,6 +53,7 @@ test("an up vote increments its own slot and leaves the rest alone", () => {
     places: null,
     created_at: null,
     closed: false,
+    deleted: false,
     round: 0,
     up: { "1": 2, "2": 3 },
     down: {},
@@ -65,6 +69,7 @@ test("a cancelling vote increments the slot's down counter", () => {
     places: null,
     created_at: null,
     closed: false,
+    deleted: false,
     round: 0,
     up: {},
     down: { "1": 2 },
@@ -95,9 +100,32 @@ test("closing a document sets its flag and returns a new one", () => {
     places: ["Warteg", "Padang"],
     created_at: "2026-08-14 03:00:00",
     closed: true,
+    deleted: false,
     round: 0,
     up: {},
     down: {},
   });
   assert.equal(before.closed, false);
+});
+
+test("deleting a document sets its flag and returns a new one", () => {
+  const before = creatorDoc(
+    "a3f1",
+    "Makan siang Jumat",
+    ["Warteg", "Padang"],
+    "2026-08-14 03:00:00",
+  );
+
+  assert.deepEqual(applyDelete(before), {
+    device: "a3f1",
+    title: "Makan siang Jumat",
+    places: ["Warteg", "Padang"],
+    created_at: "2026-08-14 03:00:00",
+    closed: false,
+    deleted: true,
+    round: 0,
+    up: {},
+    down: {},
+  });
+  assert.equal(before.deleted, false);
 });

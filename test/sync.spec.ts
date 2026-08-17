@@ -735,3 +735,36 @@ test("a reset survives votes cast on a device that could not see it", async ({
   await first.close();
   await second.close();
 });
+
+test("a delete on one device drops the session on the other", async ({
+  browser,
+}) => {
+  const first = await browser.newContext();
+  const second = await browser.newContext();
+  const a = await first.newPage();
+  const b = await second.newPage();
+
+  const link = await afterSync(a, () => createSession(a, "Makan hapus tim"));
+  await afterSync(b, () => b.goto(link));
+  await expect(
+    b.getByRole("heading", { name: "Makan hapus tim" }),
+  ).toBeVisible();
+
+  for (let tap = 0; tap < 5; tap += 1) await a.locator(".km-id").click();
+  const pushed = a.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" && isPull(response.url()),
+  );
+  await a.getByRole("button", { name: "Hapus sesi" }).click();
+  await pushed;
+
+  await afterSync(b, () => b.reload());
+
+  await expect(b.locator("[data-session]")).toHaveAttribute(
+    "data-state",
+    "missing",
+  );
+
+  await first.close();
+  await second.close();
+});

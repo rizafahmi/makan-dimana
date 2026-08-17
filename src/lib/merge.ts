@@ -8,6 +8,7 @@ export type SessionDoc = {
   places: string[] | null;
   created_at: string | null;
   closed: boolean;
+  deleted?: boolean;
   round?: number;
   up: Counters;
   down: Counters;
@@ -19,6 +20,7 @@ export const emptyDoc = (device: string) => ({
   places: null,
   created_at: null,
   closed: false,
+  deleted: false,
   round: 0,
   up: {},
   down: {},
@@ -49,6 +51,8 @@ export const votesCast = (doc: SessionDoc, slot: number) =>
 
 export const applyClose = (doc: SessionDoc) => ({ ...doc, closed: true });
 
+export const applyDelete = (doc: SessionDoc) => ({ ...doc, deleted: true });
+
 export const applyReset = (doc: SessionDoc, round: number) => ({
   ...doc,
   round,
@@ -66,6 +70,7 @@ export const parseDoc = (raw: string): SessionDoc | null => {
 };
 
 export const mergeDocs = (docs: SessionDoc[]) => {
+  if (docs.some((doc) => doc.deleted)) return null;
   const claimants = docs.filter((doc) => doc.title !== null);
   if (claimants.length === 0) return null;
   const creator = claimants.reduce((lowest, doc) =>

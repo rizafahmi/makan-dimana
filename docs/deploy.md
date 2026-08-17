@@ -235,6 +235,12 @@ sudo -u makan -H sh -c 'cd /srv/makan && git pull && pnpm install --frozen-lockf
 sudo systemctl restart makan
 ```
 
+Or directly use gcloud
+
+```
+gcloud compute ssh makan --zone=asia-southeast2-a --command="sudo -u makan -H sh -c 'cd /srv/makan && git pull && pnpm install --frozen-lockfile && pnpm build' && sudo systemctl restart makan"
+```
+
 Bump the `version` constant in `public/sw.js` in the same commit as anything the shell
 ships, or one visitor keeps a stale cache and nobody else can reproduce it.
 
