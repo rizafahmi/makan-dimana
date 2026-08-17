@@ -109,6 +109,10 @@ test("the cancel control sits beside its row, not under it", async ({
   await holdRelay(page);
   await createSession(page, "Makan malam tim");
 
+  const warteg = page.locator("button.km-place", { hasText: "Warteg Bahari" });
+  await warteg.click();
+  await expect(warteg).toHaveAttribute("data-votes", "1");
+
   const row = await box(
     page.locator("button.km-place", { hasText: "Warteg Bahari" }),
   );

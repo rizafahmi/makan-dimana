@@ -39,6 +39,12 @@ export const applyVote = (doc: SessionDoc, slot: number, delta: number) =>
     ? { ...doc, down: bump(doc.down, slot) }
     : { ...doc, up: bump(doc.up, slot) };
 
+const counted = (counters: Record<string, number | undefined>, slot: number) =>
+  counters[slot] ?? 0;
+
+export const votesCast = (doc: SessionDoc, slot: number) =>
+  counted(doc.up, slot) - counted(doc.down, slot);
+
 export const applyClose = (doc: SessionDoc) => ({ ...doc, closed: true });
 
 export const parseDoc = (raw: string): SessionDoc | null => {

@@ -5,6 +5,7 @@ import {
   applyVote,
   creatorDoc,
   mergeDocs,
+  votesCast,
   type SessionDoc,
 } from "../lib/merge.ts";
 import { listPlaces, tallyView, winnerView } from "../lib/session.ts";
@@ -109,7 +110,8 @@ const mountSession = async (root: HTMLElement) => {
     root.querySelector<HTMLElement>(`button[data-place="${place}"]`)?.focus();
   }
 
-  const rows = () => root.querySelectorAll<HTMLElement>("[data-place]");
+  const rows = () =>
+    root.querySelectorAll<HTMLElement>(".km-list > [data-place]");
 
   function rowTops() {
     const tops = new Map<string, number>();
@@ -159,6 +161,7 @@ const mountSession = async (root: HTMLElement) => {
     heading.className = "km-h1";
     root.append(head, heading);
 
+    const mine = ownDoc(stored.docs, device);
     const places = listPlaces(session);
     const tally = tallyView(places);
     const { winners, others, kicker, sub, note } = winnerView(
@@ -239,10 +242,14 @@ const mountSession = async (root: HTMLElement) => {
 
       if (row !== item) {
         item.className = "km-vote";
-        const undo = button("Batalin", () => void vote(Number(slot), -1));
-        undo.className = "km-undo";
-        undo.setAttribute("aria-label", `Batalin vote ${place.name}`);
-        item.append(row, undo);
+        item.dataset.place = slot;
+        item.append(row);
+        if (votesCast(mine, place.slot) > 0) {
+          const undo = button("Batalin", () => void vote(Number(slot), -1));
+          undo.className = "km-undo";
+          undo.setAttribute("aria-label", `Batalin vote ${place.name}`);
+          item.append(undo);
+        }
       }
       list.append(item);
     }

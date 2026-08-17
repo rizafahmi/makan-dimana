@@ -516,9 +516,7 @@ button.km-place {
   color: inherit;
   text-align: left;
   cursor: pointer;
-  transition:
-    background 120ms linear,
-    transform 420ms cubic-bezier(0.22, 0.61, 0.36, 1) 160ms;
+  transition: background 120ms linear;
 }
 
 button.km-place:hover {
@@ -539,6 +537,7 @@ button.km-place[data-voted="true"] {
   display: flex;
   align-items: stretch;
   gap: var(--gap-row);
+  transition: transform 420ms cubic-bezier(0.22, 0.61, 0.36, 1) 160ms;
 }
 
 .km-vote button.km-place {
@@ -673,7 +672,8 @@ button.km-place[data-voted="true"] {
 
 @media (prefers-reduced-motion: reduce) {
   .km-button,
-  button.km-place {
+  button.km-place,
+  .km-vote {
     transition: none;
   }
 }

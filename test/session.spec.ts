@@ -151,6 +151,27 @@ test("a row offers a way to take a vote back without a gesture", async ({
   await expect(warteg()).toHaveAttribute("data-votes", "0");
 });
 
+test("a place this device has not voted for offers nothing to take back", async ({
+  page,
+}) => {
+  await holdRelay(page);
+  await createSession(page, "Makan malam tim");
+  const undo = (name: string) =>
+    page.getByRole("button", { name: `Batalin vote ${name}` });
+
+  await expect(undo("Warteg Bahari")).toHaveCount(0);
+  await expect(undo("Nasi Padang")).toHaveCount(0);
+
+  await page.locator("button.km-place", { hasText: "Warteg Bahari" }).click();
+
+  await expect(undo("Warteg Bahari")).toHaveCount(1);
+  await expect(undo("Nasi Padang")).toHaveCount(0);
+
+  await undo("Warteg Bahari").click();
+
+  await expect(undo("Warteg Bahari")).toHaveCount(0);
+});
+
 test("closing is one-way: it survives a reload and offers no way back", async ({
   page,
 }) => {
@@ -249,6 +270,31 @@ test("a row that changes position slides there instead of jumping", async ({
   await page.locator("button.km-place", { hasText: "Nasi Padang" }).click();
   await expect(first()).toContainText("Nasi Padang");
   await expect(page.locator("body")).toHaveAttribute("data-slid", /^(12|21)$/);
+});
+
+test("a row's cancel control travels with the row, not apart from it", async ({
+  page,
+}) => {
+  await holdRelay(page);
+  await createSession(page, "Makan malam tim");
+  const first = () => page.locator("button.km-place").first();
+
+  await expect(first()).toContainText("Warteg Bahari");
+
+  await page.evaluate(() => {
+    document.addEventListener("transitionstart", (event) => {
+      if (event.propertyName !== "transform") return;
+      if (document.body.dataset.moved !== undefined) return;
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) return;
+      document.body.dataset.moved = target.tagName;
+    });
+  });
+
+  await page.locator("button.km-place", { hasText: "Nasi Padang" }).click();
+
+  await expect(first()).toContainText("Nasi Padang");
+  await expect(page.locator("body")).toHaveAttribute("data-moved", "LI");
 });
 
 test("a row hold its old position for a beat before it slides", async ({

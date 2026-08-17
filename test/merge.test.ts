@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { mergeDocs } from "../src/lib/merge.ts";
+import { emptyDoc, mergeDocs, votesCast } from "../src/lib/merge.ts";
 
 test("a lone creator document becomes a session row", () => {
   const session = mergeDocs([
@@ -122,4 +122,16 @@ test("a session with no creator document is not held at all", () => {
 
   assert.equal(votesOnly, null);
   assert.equal(mergeDocs([]), null);
+});
+
+test("a device's own standing votes for a slot are its ups minus its downs", () => {
+  const doc = {
+    ...emptyDoc("a3f1"),
+    up: { "1": 3, "2": 1 },
+    down: { "1": 1 },
+  };
+
+  assert.equal(votesCast(doc, 1), 2);
+  assert.equal(votesCast(doc, 2), 1);
+  assert.equal(votesCast(doc, 3), 0);
 });
