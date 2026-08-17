@@ -341,7 +341,9 @@ test("a vote cast while the relay is answering survives the answer", async ({
 test("a local write is published without waiting for the next sync", async ({
   page,
 }) => {
-  const link = await afterSync(page, () => createSession(page, "Makan tanggap"));
+  const link = await afterSync(page, () =>
+    createSession(page, "Makan tanggap"),
+  );
   const endpoint = link.replace("/s/", "/api/sessions/");
 
   const pushes = () =>
@@ -629,9 +631,7 @@ test("a device coming back to its tab picks up what it slept through", async ({
   await b.waitForTimeout(settle);
   await expect(warteg(b)).toHaveAttribute("data-votes", "0");
 
-  await b.evaluate(() =>
-    document.dispatchEvent(new Event("visibilitychange")),
-  );
+  await b.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
 
   await expect(warteg(b)).toHaveAttribute("data-votes", "1", {
     timeout: 10_000,
@@ -674,4 +674,31 @@ test("a device whose stream was refused outright gets one back", async ({
 
   await first.close();
   await second.close();
+});
+
+test("triggers arriving while a sync is in flight collapse into one more", async ({
+  page,
+}) => {
+  await createSession(page, "Makan siang tim");
+  await page.waitForTimeout(settle);
+
+  await page.route("**/api/sessions/**", async (route) => {
+    const request = route.request();
+    if (request.method() === "GET" && isPull(request.url())) {
+      await new Promise((resolve) => setTimeout(resolve, 300));
+    }
+    return route.continue();
+  });
+
+  const posts: string[] = [];
+  page.on("request", (request) => {
+    if (request.method() === "POST") posts.push(request.url());
+  });
+
+  await page.evaluate(() => {
+    for (let i = 0; i < 6; i += 1) dispatchEvent(new Event("online"));
+  });
+  await page.waitForTimeout(settle);
+
+  expect(posts.length).toBeLessThanOrEqual(2);
 });

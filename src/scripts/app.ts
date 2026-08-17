@@ -1,3 +1,4 @@
+import { coalescing } from "../lib/coalesce.ts";
 import { generateSessionId, normalizeSessionId } from "../lib/id.ts";
 import {
   applyClose,
@@ -30,8 +31,7 @@ type Session = NonNullable<ReturnType<typeof mergeDocs>>;
 const holdDelay = 500;
 const slotKeys = ["Digit1", "Digit2", "Digit3", "Digit4"];
 const closeKey = "KeyT";
-const hintText =
-  "Ketuk baris buat vote. Tahan atau Shift+klik buat batalin.";
+const hintText = "Ketuk baris buat vote. Tahan atau Shift+klik buat batalin.";
 const legendText =
   "Pencet 1-4 buat vote. Shift+angka buat batalin. T buat tutup sesi.";
 const missingText = "Sesi tidak ditemukan";
@@ -277,7 +277,7 @@ const mountSession = async (root: HTMLElement) => {
     restore(focused);
   }
 
-  const resync = retrying(sync);
+  const resync = retrying(coalescing(sync));
 
   async function change(transform: (doc: SessionDoc) => SessionDoc) {
     const next = transform(ownDoc(stored.docs, device));
@@ -460,4 +460,5 @@ if (create) mountCreate(create);
 if (session) void mountSession(session);
 if (sessions) void mountLanding(sessions);
 
-if ("serviceWorker" in navigator) void navigator.serviceWorker.register("/sw.js");
+if ("serviceWorker" in navigator)
+  void navigator.serviceWorker.register("/sw.js");
