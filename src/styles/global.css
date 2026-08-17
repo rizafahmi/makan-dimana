@@ -111,7 +111,13 @@ p {
   margin: 0;
 }
 
-:where(.km-button, .km-input, .km-row a, .km-back, button.km-place):focus-visible {
+:where(
+  .km-button,
+  .km-input,
+  .km-row a,
+  .km-back,
+  button.km-place
+):focus-visible {
   outline: var(--focus-outline);
   outline-offset: var(--focus-offset);
 }
@@ -509,7 +515,9 @@ button.km-place {
   color: inherit;
   text-align: left;
   cursor: pointer;
-  transition: background 120ms linear;
+  transition:
+    background 120ms linear,
+    transform 420ms cubic-bezier(0.22, 0.61, 0.36, 1) 160ms;
 }
 
 button.km-place:hover {

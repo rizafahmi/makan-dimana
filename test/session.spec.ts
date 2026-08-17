@@ -204,3 +204,65 @@ test("a malformed id is refused by the client, not only by the page", async ({
   );
   expect(await storedIds(page)).toEqual([]);
 });
+
+test("a row that changes position slides there instead of jumping", async ({
+  page,
+}) => {
+  await holdRelay(page);
+  await createSession(page, "Makan malam tim");
+  const first = () => page.locator("button.km-place").first();
+
+  await expect(first()).toContainText("Warteg Bahari");
+  await page.evaluate(() => {
+    document.addEventListener("transitionstart", (event) => {
+      if (event.propertyName !== "transform") return;
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) return;
+      const slot = target.dataset.place;
+      if (slot === undefined) return;
+      const seen = document.body.dataset.slid ?? "";
+      document.body.dataset.slid = seen.includes(slot) ? seen : seen + slot;
+    });
+  });
+
+  await page.locator("button.km-place", { hasText: "Nasi Padang" }).click();
+  await expect(first()).toContainText("Nasi Padang");
+  await expect(page.locator("body")).toHaveAttribute("data-slid", /^(12|21)$/);
+});
+
+test("a row hold ts old position for a beat before it slides", async ({
+  page,
+}) => {
+  await holdRelay(page);
+  await createSession(page, "Makan malam tim");
+
+  await expect(page.locator("button.km-place").first()).toContainText(
+    "Warteg Bahari",
+  );
+  await page.evaluate(() => {
+    document.addEventListener(
+      "click",
+      () => {
+        document.body.dataset.tapped = String(performance.now());
+      },
+      true,
+    );
+
+    document.addEventListener("transitionstart", (event) => {
+      if (event.propertyName !== "transform") return;
+      if (document.body.dataset.waited !== undefined) return;
+      const tapped = document.body.dataset.tapped;
+      if (tapped === undefined) return;
+      document.body.dataset.waited = String(
+        Math.round(performance.now() - Number(tapped)),
+      );
+    });
+  });
+  await page.locator("button.km-place", { hasText: "Nasi Padang" }).click();
+
+  await expect
+    .poll(() =>
+      page.evaluate(() => Number(document.body.dataset.waited ?? "-1")),
+    )
+    .toBeGreaterThanOrEqual(100);
+});

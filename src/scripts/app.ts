@@ -134,6 +134,29 @@ const mountSession = async (root: HTMLElement) => {
     root.querySelector<HTMLElement>(`button[data-place="${place}"]`)?.focus();
   }
 
+  function rowTops() {
+    const tops = new Map<string, number>();
+    const rows = () => root.querySelectorAll<HTMLElement>("[data-place]");
+    for (const node of rows()) {
+      const slot = node.dataset.place;
+      if (slot !== undefined) tops.set(slot, node.getBoundingClientRect().top);
+    }
+    return tops;
+  }
+  function slide(before: Map<string, number>) {
+    for (const node of root.querySelectorAll<HTMLElement>("[data-place]")) {
+      const slot = node.dataset.place;
+      const was = slot === undefined ? undefined : before.get(slot);
+      if (was === undefined) continue;
+      const delta = was - node.getBoundingClientRect().top;
+      if (delta === 0) continue;
+      node.style.transition = "none";
+      node.style.transform = `translateY(${delta}px)`;
+      void node.offsetHeight;
+      node.style.transition = "";
+      node.style.transform = "";
+    }
+  }
   function draw(session: Session) {
     clear(root);
     root.dataset.state = "ready";
@@ -273,7 +296,9 @@ const mountSession = async (root: HTMLElement) => {
 
   function repaint() {
     const focused = focusedPlace();
+    const before = rowTops();
     render();
+    slide(before);
     restore(focused);
   }
 
