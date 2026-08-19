@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { createSession, holdRelay } from "./browser.ts";
+import { createSession, holdRelay, revealControls } from "./browser.ts";
 
 const storedIds = (page: Page) =>
   page.evaluate(
@@ -190,6 +190,24 @@ test("five taps on the session id reveal a reset, and four do not", async ({
   await expect(reset).toHaveCount(1);
 });
 
+test("five taps on the session id reveal the close, and four do not", async ({
+  page,
+}) => {
+  await holdRelay(page);
+  await createSession(page, "Makan malam tim");
+  const toggle = page.getByRole("button", { name: "Tutup sesi" });
+  const id = page.locator(".km-id");
+
+  await expect(toggle).toHaveCount(0);
+
+  for (let tap = 0; tap < 4; tap += 1) await id.click();
+  await expect(toggle).toHaveCount(0);
+
+  await id.click();
+
+  await expect(toggle).toHaveCount(1);
+});
+
 test("a reset takes every tally back to zero", async ({ page }) => {
   await holdRelay(page);
   await createSession(page, "Makan malam tim");
@@ -217,11 +235,10 @@ test("a closed session can be deleted from the hidden controls", async ({
 }) => {
   await holdRelay(page);
   const link = await createSession(page, "Makan malam tim");
+  await revealControls(page);
   await page.getByRole("button", { name: "Tutup sesi" }).click();
   await expect(page.getByText("Sesi sudah ditutup")).toBeVisible();
 
-  const id = page.locator(".km-id");
-  for (let tap = 0; tap < 5; tap += 1) await id.click();
   await page.getByRole("button", { name: "Hapus sesi" }).click();
 
   await expect(page).toHaveURL("/");
@@ -242,6 +259,7 @@ test("closing is one-way: it survives a reload and offers no way back", async ({
   await createSession(page, "Makan siang Jumat");
   await page.locator("button.km-place", { hasText: "Warteg Bahari" }).click();
 
+  await revealControls(page);
   await page.getByRole("button", { name: "Tutup sesi" }).click();
 
   await expect(page.getByText("Sudah ditutup")).toBeVisible();
@@ -249,6 +267,7 @@ test("closing is one-way: it survives a reload and offers no way back", async ({
 
   await page.reload();
 
+  await revealControls(page);
   await expect(page.getByText("Sudah ditutup")).toBeVisible();
   await expect(page.getByRole("button", { name: "Buka lagi" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Tutup sesi" })).toHaveCount(0);

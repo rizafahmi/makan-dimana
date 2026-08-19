@@ -1,5 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
-import { createSession, cuttableStream, refuseSync } from "./browser.ts";
+import {
+  createSession,
+  cuttableStream,
+  refuseSync,
+  revealControls,
+} from "./browser.ts";
 
 const settle = 1500;
 
@@ -139,6 +144,7 @@ test("a close made on one device wins on a device that was still voting", async 
   const b = await second.newPage();
 
   const link = await afterSync(a, () => createSession(a, "Makan bareng tim"));
+  await revealControls(a);
   await afterSync(b, () => b.goto(link));
 
   await second.setOffline(true);
@@ -151,6 +157,7 @@ test("a close made on one device wins on a device that was still voting", async 
 
   await afterSync(b, () => second.setOffline(false));
 
+  await revealControls(b);
   await expect(b.getByText("Sudah ditutup")).toBeVisible();
   await expect(b.getByRole("button", { name: "Tutup sesi" })).toHaveCount(0);
   await expect(b.locator(".km-hero-who")).toHaveText("Warteg Bahari");
@@ -360,6 +367,7 @@ test("a local write is published without waiting for the next sync", async ({
   await voted;
 
   const closed = pushes();
+  await revealControls(page);
   await page.getByRole("button", { name: "Tutup sesi" }).click();
   await expect(page.getByText("Sudah ditutup")).toBeVisible();
   await closed;

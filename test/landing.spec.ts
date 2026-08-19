@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { createSession, holdRelay } from "./browser.ts";
+import { createSession, holdRelay, revealControls } from "./browser.ts";
 
 const pastTheSecondBoundary = 1100;
 
@@ -44,6 +44,7 @@ test("a session closed on its own page is listed as closed, an untouched one as 
 }) => {
   await holdRelay(page);
   await createSession(page, "Makan siang tim");
+  await revealControls(page);
   await page.getByRole("button", { name: "Tutup sesi" }).click();
   await expect(page.getByText("Sudah ditutup")).toBeVisible();
   await createSession(page, "Makan malam tim");
@@ -53,7 +54,9 @@ test("a session closed on its own page is listed as closed, an untouched one as 
   const closed = row(page, "Makan siang tim");
   const open = row(page, "Makan malam tim");
   await expect(closed).toHaveAttribute("data-open", "0");
-  await expect(closed.locator(".km-row-state")).toHaveText("Sesi sudah ditutup");
+  await expect(closed.locator(".km-row-state")).toHaveText(
+    "Sesi sudah ditutup",
+  );
   await expect(open).toHaveAttribute("data-open", "1");
   await expect(open.locator(".km-row-state")).toHaveText("Sesi masih buka");
 });

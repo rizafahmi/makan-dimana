@@ -280,7 +280,7 @@ const mountSession = async (root: HTMLElement) => {
       root.append(tally);
     }
 
-    if (isOpen || revealed) {
+    if (revealed) {
       const actions = el("div");
       actions.className = "km-actions";
 
@@ -291,15 +291,14 @@ const mountSession = async (root: HTMLElement) => {
         actions.append(toggle);
       }
 
-      if (revealed) {
-        const wipe = button("Reset vote", () => void reset(session.round + 1));
-        wipe.className = "km-button";
-        wipe.dataset.variant = "outline";
-        const drop = button("Hapus sesi", () => void remove());
-        drop.className = "km-button";
-        drop.dataset.variant = "danger";
-        actions.append(wipe, drop);
-      }
+      const wipe = button("Reset vote", () => void reset(session.round + 1));
+      wipe.className = "km-button";
+      wipe.dataset.variant = "outline";
+      const drop = button("Hapus sesi", () => void remove());
+      drop.className = "km-button";
+      drop.dataset.variant = "danger";
+      actions.append(wipe, drop);
+
       root.append(actions);
     }
     voted = null;
@@ -350,7 +349,6 @@ const mountSession = async (root: HTMLElement) => {
     await change(applyDelete);
     location.assign("/");
   }
-
 
   async function sync() {
     const answer = await exchange(id, device, ownDoc(stored.docs, device));
@@ -412,10 +410,7 @@ const mountLanding = async (root: HTMLElement) => {
       const title = el("span", session.title ?? "");
       title.className = "km-row-title";
 
-      const state = el(
-        "span",
-        session.is_open === 1 ? openText : closedText,
-      );
+      const state = el("span", session.is_open === 1 ? openText : closedText);
       state.className = "km-row-state";
 
       const created = new Date(

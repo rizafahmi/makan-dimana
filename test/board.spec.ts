@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { createSession, holdRelay } from "./browser.ts";
+import { createSession, holdRelay, revealControls } from "./browser.ts";
 
 const caps = (page: Page) => page.locator("[data-session] .km-key");
 
@@ -26,6 +26,7 @@ test("a key cap marks the slot a key reaches, wherever the sort puts the row", a
   await expect(row(page, "Nasi Padang")).toHaveAttribute("data-votes", "1");
   await expect(caps(page)).toHaveText(["2", "1", "3"]);
 
+  await revealControls(page);
   await page.getByRole("button", { name: "Tutup sesi" }).click();
   await expect(page.getByText("Pemenang")).toBeVisible();
   await expect(caps(page)).toHaveCount(0);
@@ -140,9 +141,7 @@ test("the board's hint is the keyboard legend, not the phone's tap hint", async 
   await holdRelay(page);
   const link = await createSession(page, "Makan siang panitia");
 
-  await expect(page.locator(".km-hint")).toHaveText(
-    "Ketuk baris buat vote.",
-  );
+  await expect(page.locator(".km-hint")).toHaveText("Ketuk baris buat vote.");
 
   await page.goto(`${link}/board`);
 
@@ -217,7 +216,9 @@ test.describe("on a projector", () => {
     await page.goto(link);
     await expect(page.getByText("Pemenang")).toBeVisible();
     const phone = await page.evaluate(() =>
-      parseFloat(getComputedStyle(document.querySelector("h1.km-h1")!).fontSize),
+      parseFloat(
+        getComputedStyle(document.querySelector("h1.km-h1")!).fontSize,
+      ),
     );
     expect(phone).toBe(44);
   });
@@ -225,7 +226,9 @@ test.describe("on a projector", () => {
 
 const controlled = (page: Page) =>
   expect
-    .poll(() => page.evaluate(() => navigator.serviceWorker.controller !== null))
+    .poll(() =>
+      page.evaluate(() => navigator.serviceWorker.controller !== null),
+    )
     .toBe(true);
 
 const forgetShell = (page: Page, path: string) =>

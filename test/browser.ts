@@ -18,6 +18,11 @@ export const createSession = async (
   return new URL(page.url()).pathname;
 };
 
+export const revealControls = async (page: Page) => {
+  const id = page.locator(".km-id");
+
+  for (let tap = 0; tap < 5; tap += 1) await id.click();
+};
 export const cuttableStream = async (page: Page, origin: string) => {
   const open = new Set<ServerResponse>();
 

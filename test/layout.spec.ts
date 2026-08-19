@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { createSession, holdRelay } from "./browser.ts";
+import { createSession, holdRelay, revealControls } from "./browser.ts";
 
 test.use({ viewport: { width: 390, height: 844 } });
 
@@ -72,6 +72,7 @@ test("no page scrolls sideways at a phone viewport, whatever it holds", async ({
   spill["/s/[id]"] = await sideways(page);
 
   await winner.click();
+  await revealControls(page);
   await page.getByRole("button", { name: "Tutup sesi" }).click();
   await expect(page.getByText("Pemenang")).toBeVisible();
   spill["/s/[id] closed"] = await sideways(page);
@@ -126,7 +127,6 @@ test("the cancel control sits beside its row, not under it", async ({
   expect(undo.width).toBeGreaterThanOrEqual(44);
   expect(undo.height).toBeGreaterThanOrEqual(44);
 });
-
 
 test("the repository link lines up with the page, not the viewport edge", async ({
   page,

@@ -32,6 +32,7 @@ applied to closing.
   device resets a round it has already seen someone else start.
 - Nothing reads the old rounds. The counters from a previous round stay in each
   device's document, ignored, until that device resets again and clears them.
-- The reset is hidden behind five taps on the session id, not behind a permission.
-  There are no accounts here, so this is obscurity and not access control - anyone who
-  knows the gesture can reset any session they hold a link to.
+- The gesture is five taps on the session id, and it reveals every control that acts
+  on the session as a whole - close, reset and delete - not just the reset. There are
+  no accounts here, so this is obscurity and not access control - anyone who knows the
+  gesture can close, reset or delete any session they hold a link to.
